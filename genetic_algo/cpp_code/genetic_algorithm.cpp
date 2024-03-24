@@ -43,7 +43,7 @@ struct Evolution {
         std::vector<int> parents;
         for (int i = 0; i < 5; i++) parents.push_back(d(g));
         std::sort(parents.begin(), parents.end(), [&](const int &a, const int &b){
-            population[a] < population[b];
+            return population[a] < population[b];
         });
         return {population[parents[0]], Individuo(population[parents[1]])};
     }
