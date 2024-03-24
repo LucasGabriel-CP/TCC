@@ -38,3 +38,7 @@ struct Point{
     Point operator*(int d) { return {x * d, y * d}; }
     Point operator/(int d) { return {x / d, y / d}; }
 };
+
+float dist(Point const &a, Point const &b) {
+    return hypot(a.x - b.x, a.y - b.y);
+}

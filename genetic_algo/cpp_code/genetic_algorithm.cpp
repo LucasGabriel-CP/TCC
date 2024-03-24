@@ -1,39 +1,55 @@
-#include "util/Individuo.cpp"
+#include "Individuo.cpp"
 #include "util/Constants.cpp"
 
 struct Evolution {
     std::vector<Individuo> population;
     std::vector<Individuo> next_gen;
     std::discrete_distribution<int> d;
+    std::vector<Turbine> turbinies;
+    Point substation;
+    int num_t;
     Evolution() { }
 
-    Individuo generate_individuo() {
+    Evolution(Point _sub, std::vector<Turbine> _turb, int _t) {
+        substation = _sub;
+        turbinies = _turb;
+        num_t = _t;
+    }
+
+    Individuo generate_individuo(std::vector<int> const &order) {
         Individuo new_ind = Individuo();
+        
+        for (int i = 0; i < num_t; i++) {
+            new_ind.build(turbinies, order, i);
+        }
 
         return new_ind;
     }
 
-    void populate(int l, int r) {
+    void populate_partially(int l, int r, std::vector<int> const &order) {
         r = std::min(r, (int)population.size());
         for (int i = l; i <= r; i++) {
-            population[i] = generate_individuo();
-        }
-    }
-
-    void populate_partially(int l, int r) {
-        r = std::min(r, (int)population.size());
-        for (int i = l; i <= r; i++) {
-            population[i] = generate_individuo();
+            population[i] = generate_individuo(order);
         }
     }
 
     void populate() {
+        std::vector<int> order(num_t);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](const int &a, const int &b) {
+            float x1 = turbinies[a].pos.x - substation.x;
+            float y1 = turbinies[a].pos.y - substation.y;
+            float x2 = turbinies[b].pos.x - substation.x;
+            float y2 = turbinies[b].pos.y - substation.y;
+            return std::atan2(x1, y1) < std::atan2(x2, y2);
+        });
+
         std::vector<std::thread> threads(5);
         int l = 0, step = (int)population.size()/5;
         for (int i = 0; i < 5; i++) {
             if (i == 4) step = (int)population.size();
             int r = l + step-1;
-            threads[i] = std::thread(&populate_partially, this, l, r);
+            threads[i] = std::thread(&populate_partially, this, l, r, std::cref(order));
             l += step;
         }
         for (std::thread &th: threads) th.join();
