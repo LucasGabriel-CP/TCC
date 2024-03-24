@@ -4,6 +4,7 @@
 struct Evolution {
     std::vector<Individuo> population;
     std::vector<Individuo> next_gen;
+    std::discrete_distribution<int> d;
     Evolution() { }
 
     Individuo generate_individuo() {
@@ -39,7 +40,12 @@ struct Evolution {
     }
 
     std::pair<Individuo, Individuo> select_parents() {
-        return {Individuo(), Individuo()};
+        std::vector<int> parents;
+        for (int i = 0; i < 5; i++) parents.push_back(d(g));
+        std::sort(parents.begin(), parents.end(), [&](const int &a, const int &b){
+            population[a] < population[b];
+        });
+        return {population[parents[0]], Individuo(population[parents[1]])};
     }
 
     float crossover_prob(float fmax, float favg, float fat) {
@@ -115,6 +121,12 @@ struct Evolution {
                 std::cout.flush();
             }
 
+            std::vector<int> weigths(pop_size);
+            for (int i = 0; i < pop_size; i++) {
+                weigths[i] = 1 + worst - population[i].fitness;
+            }
+            d = std::discrete_distribution<int>(weigths.begin(), weigths.end());
+
             next_gen = std::vector<Individuo>(pop_size);
 
             for (int i = 0; i < elitism_size; i++) next_gen[i] = population[i];
@@ -132,6 +144,11 @@ struct Evolution {
 
             std::swap(population, next_gen);
             gen++;
+        }
+
+        if (verbose) {
+            float gap = (population[0].fitness - fitness_limit) / ((population[0].fitness + fitness_limit) / 2) * 100;
+            std::cout << "Generation " << gen << ", Fitness =" << std::fixed << std::setprecision(6) << best << ", Gap: " << gap << "\n";
         }
 
         int nd = (clock() - start) / CLOCKS_PER_SEC;
