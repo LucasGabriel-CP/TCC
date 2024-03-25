@@ -13,6 +13,7 @@ struct Turbine {
     Cable cable;
     std::vector<int> connetions;
     Turbine() : id(-1), total_prod(1), cable(), connetions({}) { }
+    Turbine(Point _pos) : id(-1), total_prod(1), cable(), connetions({}), pos(_pos) { }
     Turbine(int _id, int _total_prod, Point _pos, Cable _cable, std::vector<int> cons = {})
         : id(_id), total_prod(_total_prod), pos(_pos), cable(_cable), connetions(cons) { }
 
@@ -32,3 +33,7 @@ struct Turbine {
         return (total_prod + rhs.total_prod) <= cable.capacity;
     }
 };
+
+bool intersect(Turbine const &p, Turbine const &q, Turbine const &r, Turbine const &s) {
+    return intersect(p.pos, q.pos, r.pos, s.pos);
+}

@@ -17,7 +17,8 @@ int main(int argc, char *argv[]) {
 
 
     Evolution ga(N);
-    ga.run_evo(-1, 0.1, 10);
+    std::pair<Individuo, double> ans = ga.run_evo(8604208.93, 0.05, 100, 300.0, true);
+    std::cout << ans.first << '\n' << "time: " << ans.second << '\n';
 
 
 

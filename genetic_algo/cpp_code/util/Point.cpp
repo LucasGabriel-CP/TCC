@@ -43,7 +43,7 @@ struct Point{
     Point operator/(int d) { return {x / d, y / d}; }
 };
 
-float dist(Point const &a, Point const &b) {
+double dist(Point const &a, Point const &b) {
     return hypot(a.x - b.x, a.y - b.y);
 }
 
@@ -57,12 +57,12 @@ bool intersect(Point p, Point r, Point q, Point s) {
     long long c3 = pq ^ qs;
     if (!c1) {
         if (c2) return 0;
-        float t0 = (float)(pq * pr) / (float)(pr * pr);
-        float t1 = t0 + (float)(qs * pr) / (float)(pr * pr);
+        double t0 = (double)(pq * pr) / (double)(pr * pr);
+        double t1 = t0 + (double)(qs * pr) / (double)(pr * pr);
         if (f_cmp(t0, t1) > 0) std::swap(t0, t1);
         return f_cmp(0, t0) < 0 && f_cmp(t1, 1) < 0;
     }
-    float t = (float)c3 / (float)c1;
-    float u = (float)c2 / (float)c1;
+    double t = (double)c3 / (double)c1;
+    double u = (double)c2 / (double)c1;
     return f_cmp(0, t) < 0 && f_cmp(t, 1) < 0 && f_cmp(0, u) < 0 && f_cmp(u, 1) < 0;
 }

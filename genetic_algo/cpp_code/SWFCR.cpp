@@ -4,29 +4,29 @@
 #include <vector>
 #include <random>
 #include <algorithm>
-
+#include <fstream>
 #include "util/Cable.cpp"
 #include "util/Point.cpp"
 #include "util/DebugTemplate.cpp"
 #include "util/Constants.cpp"
 #include "util/Turbine.cpp"
 
-std::vector<std::vector<float>> graph;
-std::vector<float> branches;
+std::vector<std::vector<double>> graph;
+std::vector<double> branches;
 std::vector<Cable> cables;
 std::vector<Turbine> turbinies;
 Point substation;
 int N, T, C;
 
-float dist(int i, int j) {
+double dist(int i, int j) {
     if (i == NIL) return branches[j];
     if (j == NIL) return branches[i];
     return graph[i][j];
 }
 
 void init_graph() {
-    graph.assign(N, std::vector<float>(N, 0.0F));
-    branches.assign(N, 0.0F);
+    graph.assign(N, std::vector<double>(N, 0.0));
+    branches.assign(N, 0.0);
 
     for (int i = 0; i < N; i++) {
         branches[i] = dist(substation, turbinies[i].pos);
@@ -37,16 +37,13 @@ void init_graph() {
 }
 
 Cable best_cable(int energy) {
-    debug(energy);
     for (Cable &cable: cables) {
         if (cable.capacity >= energy) {
             return cable;
         }
     }
-    for (Cable &cable: cables) {
-        std::cout << cable.capacity << '\n';
-    }
-    assert(false && "Energy overflow");
+    return Cable(T, N, ENERGY_OVERFLOW_PENALTY, 999);
+    // assert(false && "Energy overflow");
 }
 
 int best_cable_price(int energy) {

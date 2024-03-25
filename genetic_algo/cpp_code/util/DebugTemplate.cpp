@@ -1,7 +1,8 @@
-#ifndef DEBUGTEMPLATE_CPP
-#define DEBUGTEMPLATE_CPP 1
-#include <bits/stdc++.h>
+#pragma once
+#include <iostream>
+#include <vector>
 // #define cerr cout
+#ifdef PIZZA
 namespace __DEBUG_UTIL__
 {
     using namespace std;
@@ -106,11 +107,9 @@ namespace __DEBUG_UTIL__
     }
 
 }
-#ifdef PIZZA
 #define debug(...) std::cerr << __LINE__ << ": [", __DEBUG_UTIL__::printer(#__VA_ARGS__, __VA_ARGS__)
 #define debugArr(...) std::cerr << __LINE__ << ": [", __DEBUG_UTIL__::printerArr(#__VA_ARGS__, __VA_ARGS__)
 #else
 #define debug(...)
 #define debugArr(...)
-#endif
 #endif
