@@ -8,11 +8,11 @@
 #include "Point.cpp"
 
 struct Turbine {
-    int id, total_prod;
+    int id, total_prod=1;
     Point pos;
     Cable cable;
     std::vector<int> connetions;
-    Turbine() : id(-1), total_prod(0), cable(), connetions({}) { }
+    Turbine() : id(-1), total_prod(1), cable(), connetions({}) { }
     Turbine(int _id, int _total_prod, Point _pos, Cable _cable, std::vector<int> cons = {})
         : id(_id), total_prod(_total_prod), pos(_pos), cable(_cable), connetions(cons) { }
 

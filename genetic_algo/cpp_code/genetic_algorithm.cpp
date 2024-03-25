@@ -1,28 +1,29 @@
 #include "Individuo.cpp"
 #include "util/Constants.cpp"
+#include "SWFCR.cpp"
 
 struct Evolution {
     std::vector<Individuo> population;
     std::vector<Individuo> next_gen;
     std::discrete_distribution<int> d;
-    std::vector<Turbine> turbinies;
-    Point substation;
     int num_t;
     Evolution() { }
 
-    Evolution(Point _sub, std::vector<Turbine> _turb, int _t) {
-        substation = _sub;
-        turbinies = _turb;
+    Evolution(int _t) {
         num_t = _t;
     }
 
     Individuo generate_individuo(std::vector<int> const &order) {
-        Individuo new_ind = Individuo();
-        
-        for (int i = 0; i < num_t; i++) {
-            new_ind.build(turbinies, order, i);
-        }
-
+        Individuo new_ind = Individuo(num_t);
+        new_ind.build(order, rand_i() % num_t);
+        #ifdef PIZZA
+            mtx.lock();
+                debug(new_ind.fitness);
+                debug(new_ind.energy);
+                debug(new_ind.go);
+                debug(new_ind.out_cable);
+            mtx.unlock();
+        #endif
         return new_ind;
     }
 
@@ -33,7 +34,7 @@ struct Evolution {
         }
     }
 
-    void populate() {
+    void populate(int num_threads) {
         std::vector<int> order(num_t);
         std::iota(order.begin(), order.end(), 0);
         std::sort(order.begin(), order.end(), [&](const int &a, const int &b) {
@@ -44,12 +45,12 @@ struct Evolution {
             return std::atan2(x1, y1) < std::atan2(x2, y2);
         });
 
-        std::vector<std::thread> threads(5);
-        int l = 0, step = (int)population.size()/5;
-        for (int i = 0; i < 5; i++) {
-            if (i == 4) step = (int)population.size();
+        std::vector<std::thread> threads(num_threads);
+        int l = 0, step = (int)population.size()/num_threads;
+        for (int i = 0; i < num_threads; i++) {
+            if (i == num_threads) step = (int)population.size();
             int r = l + step-1;
-            threads[i] = std::thread(&populate_partially, this, l, r, std::cref(order));
+            threads[i] = std::thread(&Evolution::populate_partially, this, l, r, std::cref(order));
             l += step;
         }
         for (std::thread &th: threads) th.join();
@@ -107,7 +108,8 @@ struct Evolution {
         population.resize(pop_size);
         int elitism_size = std::min(int(pop_size * elitism), 3);
         int start = clock();
-        populate();
+        populate(num_threads);
+
         float best = FLOAT_INF;
         int gen = 0;
         while ((double)(clock() - start) / CLOCKS_PER_SEC < time_limit) {
@@ -152,7 +154,7 @@ struct Evolution {
             for (int i = 0; i < num_threads; i++) {
                 if (i == num_threads - 1) step = pop_size;
                 int r = l + step - 1;
-                threads[i] = std::thread(&run_evo_partially, this, fmax, favg, l, r);
+                threads[i] = std::thread(&Evolution::run_evo_partially, this, fmax, favg, l, r);
                 l += step;
             }
 

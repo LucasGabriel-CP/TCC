@@ -37,10 +37,14 @@ void init_graph() {
 }
 
 Cable best_cable(int energy) {
+    debug(energy);
     for (Cable &cable: cables) {
-        if (cable.capacity > energy) {
+        if (cable.capacity >= energy) {
             return cable;
         }
+    }
+    for (Cable &cable: cables) {
+        std::cout << cable.capacity << '\n';
     }
     assert(false && "Energy overflow");
 }
@@ -49,13 +53,20 @@ int best_cable_price(int energy) {
     return best_cable(energy).price;
 }
 
-void read(std::string const &turb_file, std::string const &cable_file) {
+void read(std::string const &inf_file, std::string const &turb_file, std::string const &cable_file) {
     std::ifstream in;
+
+    debug(inf_file);
+    in.open(inf_file);
+    in >> N >> C;
+    in.close();
+
+    debug(turb_file);
     in.open(turb_file);
 
     in >> substation;
-    in >> N;
     turbinies.resize(N);
+    int garb; in >> garb;
     for (int i = 0; i < N; i++) {
         in >> turbinies[i].pos >> turbinies[i].total_prod;
         turbinies[i].id = i;
@@ -64,6 +75,7 @@ void read(std::string const &turb_file, std::string const &cable_file) {
 
     in.close();
 
+    debug(cable_file);
     in.open(cable_file);
     assert(in.good());
 
