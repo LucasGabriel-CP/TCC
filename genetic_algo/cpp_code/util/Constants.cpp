@@ -17,6 +17,8 @@ thread_local std::uniform_int_distribution<int> uid_i(0, std::numeric_limits<int
 thread_local const double EPS = 1e-6;
 thread_local const double DOUBLE_INF = std::numeric_limits<double>::max();
 
+thread_local const int INF = std::numeric_limits<int>::max();
+
 int f_cmp(double const &lhs, double const &rhs) {
     if (fabs(lhs - rhs) < EPS) return 0;
     return lhs < rhs ? -1 : 1;
