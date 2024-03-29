@@ -14,10 +14,11 @@ thread_local std::uniform_real_distribution<double> uid(0.0, 1.0);
 #define rand_i() uid_i(g)
 thread_local std::uniform_int_distribution<int> uid_i(0, std::numeric_limits<int>::max());             // range
 
-thread_local const double EPS = 1e-6;
-thread_local const double DOUBLE_INF = std::numeric_limits<double>::max();
+const double EPS = 1e-6;
+const double DOUBLE_INF = std::numeric_limits<double>::max();
 
-thread_local const int INF = std::numeric_limits<int>::max();
+const long long INF = std::numeric_limits<long long>::max();
+const int PENALTY = 1000;
 
 int f_cmp(double const &lhs, double const &rhs) {
     if (fabs(lhs - rhs) < EPS) return 0;
