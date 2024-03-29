@@ -400,3 +400,4 @@ FodyWeavers.xsd
 *.exe
 *.vscode
 */python_code/*
+*/conf.yml
