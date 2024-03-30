@@ -256,6 +256,72 @@ struct InitialSolution {
         get_fitness();
     }
 
+
+    void get_facility_LKM(int t) {
+        int bv, bl;
+        long long best = INF;
+        for (int l = 0; l < L; l++) {
+            int nd = std::min(T, t + center_types[l]);
+            bool ok = true;
+            for (int st = t; st < nd; st++) {
+                if (open_facilities[st] == K)ok = false;
+            }
+            if (!ok) continue;
+            for (int v = 0; v < V; v++) {
+                for (int st = t; st < nd; st++) {
+                    if (vis[st][v]) {
+                        ok = false;
+                    }
+                }
+                if (!ok) continue;
+                long long sum = 0;
+                for (int client: clients[t]) {
+                    sum += graph[client][v].second;
+                }
+                if (best > sum) {
+                    bv = v; bl = l;
+                }
+            }
+        }
+        dna[t].insert({bv, bl});
+        for (int st = t; st < std::min(T, t + center_types[bl]); st++) {
+            vis[st][bv] = true;
+            open_facilities[st]++;
+        }
+    }
+
+
+    void build_2() {
+        for (int t = 0; t < T; t++) {
+            if (open_facilities[t] == K) continue;
+            if (rand() < K / (mean_l * V)) {
+                for (int v = 0; v < V; v++) {
+                    int l = rand_i() % L;
+                    int nd = std::min(T, t + center_types[l]);
+                    bool ok = true;
+                    for (int st = t; st < nd; st++) {
+                        if (open_facilities[st] == K) ok = false;
+                    }
+                    if (ok) {
+                        for (int st = t; st < nd && vis[st][v]; st++) {
+                            v = rand_i() % V;
+                        }
+                        for (int st = t; st < nd; st++) {
+                            vis[st][v] = true;
+                            open_facilities[st]++;
+                        }
+                        dna[t].insert({v, l});
+                    }
+                }
+            }
+            if (!open_facilities[t]) {
+                get_facility_LKM(t);
+            }
+        }
+        get_fitness();
+    }
+
+
     int get_fitness() {
         fitness = 0;
         for (int t = 0; t < T; t++) {
@@ -742,7 +808,7 @@ struct Evolution {
     */
     InitialSolution generate_individuo() {
         InitialSolution new_ind = InitialSolution();
-        new_ind.build();
+        new_ind.build_2();
         return new_ind;
     }
 
