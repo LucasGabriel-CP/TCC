@@ -1,17 +1,27 @@
-import gurobipy as gp
-from pathlib import Path
-import yaml
+from optimization import Optmizer
+import sys
 
-config = None
-with open(Path("gurobi_conf/conf.yml"), "r", encoding="utf-8") as file:
-                config = yaml.safe_load(file)
 
-options = {
-    "WLSACCESSID": config['WLSACCESSID'],
-    "WLSSECRET":  config['WLSSECRET'],
-    "LICENSEID": config['LICENSEID'],
-}
+def main(argv):
+    model = Optmizer()
 
-with gp.Env(params=options) as env, gp.Model(env=env) as model:
+    instances = [f"inst{i}.txt" for i in range(31)]
+
+    if len(argv) > 2:
+        model = Optmizer()
+        model.add_data(instances[int(argv[2])])
+        model.lesgo(time_limit=60*15, problem=argv[1].upper())
+        with open('./results.txt', 'a') as fp:
+            fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}\n')
+    else:
+        for inst in instances[1:]:
+            model = Optmizer()
+            model.add_data(inst)
+            model.lesgo(time_limit=60*15, problem=argv[1].upper())
+            with open('./results.txt', 'a') as fp:
+                fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}\n')
     
-    model.optimize()
+
+if __name__ == "__main__":
+    main(sys.argv)
+
