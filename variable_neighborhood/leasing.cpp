@@ -14,13 +14,15 @@ struct LeasingProblem {
     std::vector<std::vector<std::pair<int, long long>>> adj;
     std::vector<std::vector<int>> clients;          // Clientes no instante t
     std::vector<int> center_types;                  // Tipos de centro
+    std::string version;
 
     double mean_l;
 
     LeasingProblem() { }
 
-    LeasingProblem(std::string const &instance_path) {
+    LeasingProblem(std::string const &instance_path, std::string const &_version) {
         read(instance_path);
+        version = _version;
     }
 
     void read(std::string const &instance_path) {

@@ -228,7 +228,12 @@ struct InitialSolution {
                     if (facility == -1) break;
                     mn = std::min(mn, problem.graph[client][facility]);
                 }
-                fitness += mn;
+                if (problem.version == "LKM") {
+                    fitness += mn;
+                }
+                else if (problem.version == "LKC") {
+                    fitness = std::max(fitness, mn);
+                }
             }
         }
         

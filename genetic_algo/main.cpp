@@ -425,6 +425,7 @@ struct Individuo {
     }
 
     void mutate() {
+        // IMPROVE THIS LIKE THE SHAKE ON VNS
         for (int t = 0; t < T; t++) {
             open_facilities[t].clear();
             dna[t].clear();
@@ -576,47 +577,6 @@ struct Individuo {
 
 
     void local_search() {
-        // bool improve = true;
-        // while (improve) {
-        //     improve = false;
-        //     Individuo save(dna, fitness);
-        //     for (int t = 0; t < T; t++) {
-        //         int op = rand_i() % 3;
-        //         if (!op) {
-        //             int v = rand_i() % V;
-        //             int l = rand_i() % L;
-        //             auto it = dna[t].lower_bound({v, -1});
-        //             if (it != dna[t].end() && it->first == v) continue;
-        //             dna[t].insert({v, l});
-        //         }
-        //         else if (!dna[t].empty()) {
-        //             int rl, rv;
-        //             int k = rand_i() % (int)dna[t].size();
-        //             for (auto [i, j]: dna[t]) {
-        //                 if (!k) {
-        //                     rv = i; rl = j;
-        //                     break;
-        //                 }
-        //                 k--;
-        //             }
-        //             dna[t].erase(dna[t].lower_bound({rv, rl}));
-        //             int v = rand_i() % V;
-        //             int l = rand_i() % L;
-        //             if (op == 2) {
-        //                 auto it = dna[t].lower_bound({v, -1});
-        //                 if (it != dna[t].end() && it->first == v) continue;
-        //                 dna[t].insert({v, l});
-        //             }
-        //         }
-        //     }
-        //     if (get_fitness() < save.fitness) {
-        //         improve = true;
-        //     }
-        //     else {
-        //         dna = save.dna;
-        //     }
-        // }
-
         Individuo new_sol;
         int cnt = 0;
         for (int t = 0; t < T; t++) {
@@ -647,7 +607,7 @@ struct Individuo {
             }
         }
 
-        std::sort(index_best.begin(), index_best.end());
+        std::sort(index_best.begin(), index_best.end(), std::greater<std::pair<int, int>>());
         int choosen = rand_i() % cnt; 
 
         for (int i = 0; i < choosen; i++) {
@@ -765,7 +725,7 @@ struct Individuo {
                     mn = std::min(mn, graph[client][facility].second);
                 }
                 assert(mn != INF);
-                fitness += mn;
+                fitness = std::max(fitness, mn);
             }
         }
         
