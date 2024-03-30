@@ -104,10 +104,10 @@ class Optmizer:
         self.constraint_1()
         self.constraint_2()
         self.constraint_3()
+        self.constraint_4()
         if problem == "LKC":
             self.LKC()
         elif problem == "LKM":
-            self.constraint_4()
             self.LKM()
 
 
