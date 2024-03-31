@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     LeasingProblem problem(dir + filename, version);
     VNS model(problem);
 
-    auto [S, runtime] = model.run(60*10, problem.T * problem.V * problem.L * problem.K, true, 116);
+    auto [S, runtime] = model.run(60*120, problem.T * problem.V * problem.L * problem.K, true, 23168);
     std::cout << S << '\n' << runtime << '\n';
 
 

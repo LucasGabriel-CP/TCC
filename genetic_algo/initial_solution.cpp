@@ -1,32 +1,33 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
 #include <set>
-#include "util/DebugTemplate.cpp"
+#include <utility>
 #include "util/segtree.cpp"
 #include "util/Constants.cpp"
 #include "leasing.cpp"
 
-
 struct InitialSolution {
     long long fitness=-1;
     std::vector<std::set<std::pair<int, int>>> dna;
-    std::vector<std::set<int>> current_facilities;
+    std::vector<std::vector<int>> current_facilities;
     std::vector<std::pair<int, int>> rec;
     std::vector<std::vector<bool>> vis;
-    std::vector<int> aproximation_server, dp;
+    std::vector<int> aproximation_server, dp, open_facilities, facility_idx;
     std::vector<SegTree> facility_seg;
     LeasingProblem problem;
 
 
     InitialSolution(LeasingProblem const &_problem) {
         problem = _problem;
-
         dna = std::vector<std::set<std::pair<int, int>>>(problem.T);
-        current_facilities = std::vector<std::set<int>>(problem.T);
+        current_facilities = std::vector<std::vector<int>>(problem.T, std::vector<int>(problem.V, -1));
         rec = std::vector<std::pair<int, int>>(problem.T);
         aproximation_server = std::vector<int>(problem.K, -1);
         dp = std::vector<int>(problem.T, -1);
+        open_facilities = std::vector<int>(problem.T, 0);
+        facility_idx = std::vector<int>(problem.T, 0);
         vis = std::vector<std::vector<bool>>(problem.T, std::vector<bool>(problem.V, false));
         facility_seg = std::vector<SegTree>(problem.V, SegTree(problem.T));
     }
@@ -117,15 +118,11 @@ struct InitialSolution {
     }
 
 
-    void build(bool use_dorit = false) {
+    void build() {
         for (int t = 0; t < problem.T; t++) {
             aproximation_server = std::vector<int>(problem.K, -1);
-            if (use_dorit) {
-                dorit(t);
-            }
-            else {
-                gon(t);
-            }
+            // dorit(t);
+            gon(t);
         }
         for (int k = 0; k < problem.K; k++) {
             for (int &t: dp) t = -1;
@@ -146,12 +143,79 @@ struct InitialSolution {
     }
 
 
+    void get_facility_LKM(int t) {
+        int bv, bl;
+        long long best = INF;
+        for (int l = 0; l < problem.L; l++) {
+            int nd = std::min(problem.T, t + problem.center_types[l]);
+            bool ok = true;
+            for (int st = t; st < nd; st++) {
+                if (open_facilities[st] == problem.K)ok = false;
+            }
+            if (!ok) continue;
+            for (int v = 0; v < problem.V; v++) {
+                for (int st = t; st < nd; st++) {
+                    if (vis[st][v]) {
+                        ok = false;
+                    }
+                }
+                if (!ok) continue;
+                long long sum = 0;
+                for (int client: problem.clients[t]) {
+                    sum += problem.graph[client][v];
+                }
+                if (best > sum) {
+                    bv = v; bl = l;
+                }
+            }
+        }
+        dna[t].insert({bv, bl});
+        for (int st = t; st < std::min(problem.T, t + problem.center_types[bl]); st++) {
+            vis[st][bv] = true;
+            open_facilities[st]++;
+        }
+    }
+
+
+    void build_2() {
+        for (int t = 0; t < problem.T; t++) {
+            if (open_facilities[t] == problem.K) continue;
+            if (rand() < problem.K / (problem.mean_l * problem.V)) {
+                for (int v = 0; v < problem.V; v++) {
+                    int l = rand_i() % problem.L;
+                    int nd = std::min(problem.T, t + problem.center_types[l]);
+                    bool ok = true;
+                    for (int st = t; st < nd; st++) {
+                        if (open_facilities[st] == problem.K) ok = false;
+                    }
+                    if (ok) {
+                        for (int st = t; st < nd && vis[st][v]; st++) {
+                            v = rand_i() % problem.V;
+                        }
+                        for (int st = t; st < nd; st++) {
+                            vis[st][v] = true;
+                            open_facilities[st]++;
+                        }
+                        dna[t].insert({v, l});
+                    }
+                }
+            }
+            if (!open_facilities[t]) {
+                get_facility_LKM(t);
+            }
+        }
+        get_fitness();
+    }
+
+
     int get_fitness() {
         fitness = 0;
         for (int t = 0; t < problem.T; t++) {
             for (auto [v, l]: dna[t]) {
-                for (int i = t; i < std::min(problem.T, t + problem.center_types[l]); i++) {
-                    current_facilities[i].insert(v);
+                if (v != -1) {
+                    for (int i = t; i < std::min(problem.T, t + problem.center_types[l]); i++) {
+                        current_facilities[i][facility_idx[i]++] = v;
+                    }
                 }
             }
         }
@@ -163,12 +227,7 @@ struct InitialSolution {
                     if (facility == -1) break;
                     mn = std::min(mn, problem.graph[client][facility]);
                 }
-                if (problem.version == "LKM") {
-                    fitness += mn;
-                }
-                else if (problem.version == "LKC") {
-                    fitness = std::max(fitness, mn);
-                }
+                fitness += mn;
             }
         }
         

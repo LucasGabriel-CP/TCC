@@ -4,6 +4,7 @@
 #include <vector>
 #include <set>
 #include <utility>
+#include <assert.h>
 #include "util/DebugTemplate.cpp"
 #include "util/Constants.cpp"
 #include "util/string_hash.cpp"
@@ -172,72 +173,6 @@ struct Neighbor {
         return shaked;
     }
 
-    void get_facility_LKM(int t) {
-        int bv, bl;
-        long long best = INF;
-        for (int l = 0; l < problem.L; l++) {
-            int nd = std::min(problem.T, t + problem.center_types[l]);
-            bool ok = true;
-            for (int st = t; st < nd; st++) {
-                if ((int)current_facilities[st].size() == problem.K) ok = false;
-            }
-            if (!ok) continue;
-            for (int v = 0; v < problem.V; v++) {
-                for (int st = t; st < nd; st++) {
-                    if (current_facilities[st].find(v) != current_facilities[st].end()) {
-                        ok = false;
-                    }
-                }
-                if (!ok) continue;
-                long long sum = 0;
-                for (int client: problem.clients[t]) {
-                    sum += problem.graph[client][v];
-                }
-                if (best > sum) {
-                    bv = v; bl = l;
-                }
-            }
-        }
-        dna[t].insert({bv, bl});
-        for (int st = t; st < std::min(problem.T, t + problem.center_types[bl]); st++) {
-            current_facilities[st].insert({bv, t});
-        }
-    }
-
-    void shake_mutate() {
-        for (int t = 0; t < problem.T; t++) {
-            current_facilities[t].clear();
-            dna[t].clear();
-        }
-        for (int t = 0; t < problem.T; t++) {
-            if ((int)current_facilities[t].size() == problem.K) continue;
-            if (rand() < problem.K / (problem.mean_l * problem.V)) {
-                for (int v = 0; v < problem.V; v++) {
-                    int l = rand_i() % problem.L;
-                    int nd = std::min(problem.T, t + problem.center_types[l]);
-                    bool ok = true;
-                    for (int st = t; st < nd; st++) {
-                        if ((int)current_facilities[st].size() == problem.K) ok = false;
-                    }
-                    for (int st = t; ok && st < nd; st++) {
-                        if (current_facilities[st].find(v) != current_facilities[st].end()) {
-                            ok = false;
-                        }
-                    }
-                    if (ok) {
-                        for (int st = t; st < nd; st++) {
-                            current_facilities[st].insert(v);
-                        }
-                        dna[t].insert({v, l});
-                    }
-                }
-            }
-            if (current_facilities[t].empty()) {
-                get_facility_LKM(t);
-            }
-        }
-        get_fitness();
-    }
 
     void local_search() {
         std::vector<std::set<std::pair<int, int>>> new_sol(problem.T);
