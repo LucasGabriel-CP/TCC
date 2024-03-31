@@ -48,7 +48,7 @@ struct VNS {
         std::string verbose_string = "";
         clock_t start = clock();
         InitialSolution S0(problem);
-        S0.build(true);
+        S0.build();
         Neighbor S(problem, S0.dna, S0.fitness);
         clock_t nd;
         bool stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit);
@@ -66,6 +66,9 @@ struct VNS {
 
             int k = 0;
             int cnt = 0;
+            if ((int)H.size() >= 10000000) {
+                H.clear();
+            }
             while(k < r) {
                 Neighbor SS = new_S;
                 long long hash = SS.get_hashed_sol();
@@ -80,14 +83,14 @@ struct VNS {
                 if (tried != 10) cnt++;
                 H.insert(hash);
                 // if (SS.shake_mutate()) cnt++;
-                SS.local_search();
+                SS.local_searchv2();
                 
                 // Select change
                 sequential_change(new_S, SS, k, nd);
 
                 if (verbose) {
                     double gap = double(SS.fitness - fitness_limit) / fitness_limit * 100;
-                    std::cout << "\33[2k" << "Neighbor " << k << ", Fitness = " << SS.fitness << ", Gap:" << std::fixed << std::setprecision(6) << gap << "\r";
+                    std::cout << "\33[2k" << "Neighbor " << k << ", Fitness = " << SS.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\r";
                     std::cout.flush();
                 }
             }
@@ -96,7 +99,7 @@ struct VNS {
             if (new_S < S) {
                 std::swap(new_S, S);
             }
-            stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit);
+            stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit) && fitness_limit != S.fitness;
             gen++;
         }
 
@@ -104,7 +107,7 @@ struct VNS {
             double gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
             std::cout << std::string(100, ' ') << '\r';
             std::cout.flush();
-            std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(6) << gap << "\n";
+            std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\n";
             std::cout.flush();
         }
         return {S, double(nd - start) / CLOCKS_PER_SEC};

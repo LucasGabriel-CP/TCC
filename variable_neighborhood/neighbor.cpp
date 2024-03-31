@@ -349,6 +349,80 @@ struct Neighbor {
         get_fitness();
     }
 
+    void local_searchv2() {
+        bool improve = true;
+        while (improve) {
+            improve = false;
+            std::vector<std::set<std::pair<int, int>>> save_dna = dna;
+            long long save_fitness = fitness;
+            for (int t = 0; t < problem.T; t++) {
+                int op = rand_i() % 3;
+                if (!op) {
+                    int v = rand_i() % problem.V;
+                    int l = rand_i() % problem.L;
+                    int nd = std::min(problem.T, t + problem.center_types[l]);
+                    bool ok = true;
+                    for (int st = t; ok && st < nd; st++) {
+                        if ((int)current_facilities[st].size() == problem.K) {
+                            ok = false;
+                        }
+                    }
+                    if (check_location(t, v) && ok) {
+                        dna[t].insert({v, l});
+                        get_facilities();
+                    }
+                }
+                else if (!dna[t].empty()) {
+                    int rl, rv;
+                    int k = rand_i() % (int)dna[t].size();
+                    for (auto [i, j]: dna[t]) {
+                        if (!k) {
+                            rv = i; rl = j;
+                            break;
+                        }
+                        k--;
+                    }
+                    int nd = std::min(problem.T, t + problem.center_types[rl]);
+                    bool ok = true;
+                    for (int st = t; ok && st < nd; st++) {
+                        if ((int)current_facilities[st].size() == 1) {
+                            ok = false;
+                        }
+                    }
+                    if (ok) {
+                        dna[t].erase({rv, rl});
+                    }
+                    int v = rand_i() % problem.V;
+                    int l = rand_i() % problem.L;
+                    if (op == 2) {
+                        nd = std::min(problem.T, t + problem.center_types[l]);
+                        ok = true;
+                        for (int st = t; ok && st < nd; st++) {
+                            if (current_facilities[st].find(v) != current_facilities[st].end()
+                                || (int)current_facilities[st].size() == problem.K) {
+                                ok = false;
+                            }
+                        }
+                        if (check_location(t, v) && ok) {
+                            dna[t].insert({v, l});
+                            for (int st = t; st < nd; st++) {
+                                current_facilities[st].insert(v);
+                            }
+                        }
+                    }
+                    get_facilities();
+                }
+            }
+            if (get_fitness() < save_fitness) {
+                improve = true;
+            }
+            else {
+                dna = save_dna;
+            }
+        }
+        get_fitness();
+    }
+
     void get_facilities() {
         for (int t = 0; t < problem.T; t++) {
             current_facilities[t].clear();
@@ -365,11 +439,35 @@ struct Neighbor {
         }
     }
 
+    bool valid() {
+        for (int t = 0; t < problem.T; t++) {
+            if ((int)current_facilities[t].size() > problem.K) {
+                return false;
+            }
+            for (auto [v, l]: dna[t]) {
+                int cnt = 0;
+                int nd = std::min(problem.T, t + problem.center_types[l]);
+                for (int st = t; st < nd; st++) {
+                    // Check for multifacilities
+                    for (auto [u, _]: dna[st]) {
+                        if (u == v) {
+                            cnt++;
+                        }
+                    }
+                }
+                if (cnt > 1) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     int get_fitness() {
         fitness = 0;
 
         get_facilities();
-
+        assert(valid());
         for (int t = 0; t < problem.T; t++) {
             for (int client: problem.clients[t]) {
                 long long mn = INF;
@@ -393,10 +491,10 @@ struct Neighbor {
     long long get_hashed_sol() {
         std::string sol="";
         for (int t = 0; t < problem.T; t++) {
-            sol += std::to_string(t);
+            sol += ("T" + std::to_string(t));
             for (auto [v, l]: dna[t]) {
-                sol += std::to_string(v);
-                sol += std::to_string(l);
+                sol += ("V" + std::to_string(v));
+                sol += ("L" + std::to_string(l));
             }
         }
         HashedString hash(sol);
