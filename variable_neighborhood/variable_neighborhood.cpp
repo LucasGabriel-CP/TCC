@@ -45,7 +45,6 @@ struct VNS {
     }
 
     std::pair<Neighbor, double> run(double time_limit = 3600, int r = 3, bool verbose = false, long long fitness_limit = -1) {
-        std::string verbose_string = "";
         clock_t start = clock();
         InitialSolution S0(problem);
         S0.build();
@@ -53,15 +52,15 @@ struct VNS {
         clock_t nd;
         bool stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit);
         int gen = 0;
+        double gap = 0;
         std::unordered_set<long long> H;
         nd = (clock() - start) / CLOCKS_PER_SEC;
         while (stop_criteria) {
             Neighbor new_S = S;
 
-            if (verbose) {
-                verbose_string = "";
-                double gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
-                std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(6) << gap << "\n";
+            if (true) {
+                gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
+                std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\n";
             }
 
             int k = 0;
@@ -69,7 +68,7 @@ struct VNS {
             if ((int)H.size() >= 10000000) {
                 H.clear();
             }
-            while(k < r) {
+            while(k < r && stop_criteria) {
                 Neighbor SS = new_S;
                 long long hash = SS.get_hashed_sol();
                 int tried = 0;
@@ -80,7 +79,7 @@ struct VNS {
                     hash = SS.get_hashed_sol();
                     tried++;
                 }
-                if (tried != 10) cnt++;
+                if (tried != 100) cnt++;
                 H.insert(hash);
                 // if (SS.shake_mutate()) cnt++;
                 SS.local_searchv2();
@@ -89,24 +88,25 @@ struct VNS {
                 sequential_change(new_S, SS, k, nd);
 
                 if (verbose) {
-                    double gap = double(SS.fitness - fitness_limit) / fitness_limit * 100;
+                    gap = double(SS.fitness - fitness_limit) / fitness_limit * 100;
                     std::cout << "\33[2k" << "Neighbor " << k << ", Fitness = " << SS.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\r";
                     std::cout.flush();
                 }
+                stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit) && gap > 0.005;
             }
             if (verbose) std::cout << '\n';
             debug(cnt);
             if (new_S < S) {
                 std::swap(new_S, S);
             }
-            stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit) && fitness_limit != S.fitness;
+            stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit) && gap > 0.005;
             gen++;
         }
 
         assert(S.give_penalties() == 0);
 
-        if (verbose) {
-            double gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
+        if (true) {
+            gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
             std::cout << std::string(100, ' ') << '\r';
             std::cout.flush();
             std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\n";

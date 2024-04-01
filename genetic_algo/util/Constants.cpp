@@ -19,9 +19,9 @@ const double DOUBLE_INF = std::numeric_limits<double>::max();
 
 const long long INF = std::numeric_limits<long long>::max();
 
-#define MULTI_FACILITY_PENALTY 100000LL
-#define NO_FACILITY_PENALTY 10000LL
-#define PK_FACILITIES_PENALTY 50000LL
+#define MULTI_FACILITY_PENALTY 500000LL
+#define NO_FACILITY_PENALTY 3000LL
+#define PK_FACILITIES_PENALTY 3000LL
 
 int f_cmp(double const &lhs, double const &rhs) {
     if (fabs(lhs - rhs) < EPS) return 0;

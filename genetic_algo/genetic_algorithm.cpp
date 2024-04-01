@@ -251,14 +251,13 @@ struct Evolution {
 
             fmax = INF;
             favg = 0;
-            int sample = std::min(pop_size, 10);
-            for (int i = 0; i < sample; i++) {
+            for (int i = 0; i < pop_size; i++) {
                 Individuo ind = population[i];
                 fmax = std::min(fmax, 1ll * ind.fitness);
                 favg += 1ll * ind.fitness;
                 // debug(ind);
             }
-            favg /= sample;
+            favg /= pop_size;
 
             if (verbose) {
                 double gap = double(population[0].fitness - fitness_limit) / fitness_limit * 100;
@@ -305,12 +304,14 @@ struct Evolution {
             gen++;
         }
 
-        if (verbose) {
+        if (true) {
             std::cout << std::string(90, ' ') << '\r';
             std::cout.flush();
             double gap = double(population[0].fitness - fitness_limit) / fitness_limit * 100;
             std::cout << "Generation " << gen << ", Fitness =" << best << std::fixed << std::setprecision(6) << ", Gap: " << gap << "\n";
         }
+
+        assert(!population[0].give_penalties());
 
         return {population[0], nd};
     }
