@@ -374,10 +374,13 @@ struct Neighbor {
         }
     }
 
-    bool valid() {
+    void valid() {
         for (int t = 0; t < problem.T; t++) {
             if ((int)current_facilities[t].size() > problem.K) {
-                return false;
+                assert(false && "K constraint");
+            }
+            if (current_facilities[t].empty()) {
+                assert(false && "No facility");
             }
             for (auto [v, l]: dna[t]) {
                 int cnt = 0;
@@ -391,25 +394,59 @@ struct Neighbor {
                     }
                 }
                 if (cnt > 1) {
-                    return false;
+                    assert(false && "Multi facilityies");
                 }
             }
         }
-        return true;
     }
 
-    int get_fitness() {
+    long long give_penalties() {
+        long long total_penalty = 0, multi_facilities = 0, more_than_k = 0, no_facility = 0;
+
+        for (int t = 0; t < problem.T; t++) {
+            for (auto [v, l]: dna[t]) {
+                int nd = std::min(problem.T, t + problem.center_types[l]);
+                for (int st = t; st < nd; st++) {
+                    // Check for multifacilities
+                    for (auto [u, _]: dna[st]) {
+                        if (u == v) {
+                            multi_facilities++;
+                        }
+                    }
+                }
+                multi_facilities--;
+            }
+        }
+
+        // Check for more than problem.K or no facility
+        for (int t = 0; t < problem.T; t++) {
+            if (!(int)current_facilities[t].size()) {
+                no_facility++;
+            }
+            if ((int)current_facilities[t].size() > problem.K) {
+                more_than_k++;
+            }
+        }
+
+        total_penalty = multi_facilities * MULTI_FACILITY_PENALTY + more_than_k * PK_FACILITIES_PENALTY * PK_FACILITIES_PENALTY
+                + no_facility * NO_FACILITY_PENALTY * NO_FACILITY_PENALTY * NO_FACILITY_PENALTY;
+
+        return total_penalty;
+    }
+
+    long long get_fitness() {
         fitness = 0;
 
         get_facilities();
-        assert(valid());
+        // valid();
+        fitness += give_penalties();
         for (int t = 0; t < problem.T; t++) {
             for (int client: problem.clients[t]) {
                 long long mn = INF;
                 for (int facility: current_facilities[t]) {
-                    if (facility == -1) break;
                     mn = std::min(mn, problem.graph[client][facility]);
                 }
+                if (mn == INF) continue;
                 if (problem.version == "LKM") {
                     fitness += mn;
                 }

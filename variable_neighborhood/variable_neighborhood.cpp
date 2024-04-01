@@ -74,7 +74,7 @@ struct VNS {
                 long long hash = SS.get_hashed_sol();
                 int tried = 0;
                 SS.shake();
-                while (H.find(hash) != H.end() && tried < 10) {
+                while (H.find(hash) != H.end() && tried < 100) {
                     SS = new_S;
                     SS.shake();
                     hash = SS.get_hashed_sol();
@@ -102,6 +102,8 @@ struct VNS {
             stop_criteria = bool(((double)(clock() - start) / CLOCKS_PER_SEC) < time_limit) && fitness_limit != S.fitness;
             gen++;
         }
+
+        assert(S.give_penalties() == 0);
 
         if (verbose) {
             double gap = double(S.fitness - fitness_limit) / fitness_limit * 100;

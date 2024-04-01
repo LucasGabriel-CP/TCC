@@ -106,53 +106,27 @@ struct Individuo {
             dna[t].clear();
         }
         for (int t = 0; t < problem.T; t++) {
-            if ((int)current_facilities[t].size() == problem.K) continue;
+            // if ((int)current_facilities[t].size() == problem.K) continue;
             if (rand() < problem.K / (problem.mean_l * problem.V)) {
                 for (int v = 0; v < problem.V; v++) {
                     int l = rand_i() % problem.L;
                     int nd = std::min(problem.T, t + problem.center_types[l]);
                     bool ok = true;
                     for (int st = t; st < nd; st++) {
-                        if ((int)current_facilities[st].size() == problem.K) ok = false;
+                        current_facilities[st].insert(v);
+                        facilities_types[st].insert(l);
                     }
-                    for (int st = t; ok && st < nd; st++) {
-                        if (current_facilities[st].find(v) != current_facilities[st].end()) {
-                            ok = false;
-                        }
-                    }
-                    if (ok) {
-                        for (int st = t; st < nd; st++) {
-                            current_facilities[st].insert(v);
-                            facilities_types[st].insert(l);
-                        }
-                        dna[t].insert({v, l});
-                    }
+                    dna[t].insert({v, l});
                 }
             }
-            // if (current_facilities[t].empty()) {
-            //     get_facility_LKM(t);
-            // }
         }
 
         get_fitness();
-        // if (give_penalties() != 0) {
-        //     mtx.lock();
-        //     assert(false);
-        //     mtx.unlock();
-        // }
     }
 
     bool try_insert(std::set<std::pair<int, int>> gene, Individuo &child, int t) {
         for (auto [v, l]: gene) {
             int nd = std::min(problem.T, problem.center_types[l] + t);
-            bool has = false;
-            for (int st = t; st < nd && !has; st++) {
-                if (child.current_facilities[st].find(v) != child.current_facilities[st].end()
-                    || (int)child.current_facilities[st].size() == problem.K) {
-                    has = true;
-                }
-            }
-            if (has) return false;
             child.dna[t].insert({v, l});
             for (int st = t; st < nd; st++) {
                 child.current_facilities[st].insert(v);
@@ -165,14 +139,6 @@ struct Individuo {
     bool try_insert(std::pair<int, int> alele, Individuo &child, int t) {
         auto [v, l] = alele;
         int nd = std::min(problem.T, problem.center_types[l] + t);
-        bool has = false;
-        for (int st = t; st < nd && !has; st++) {
-            if (child.current_facilities[st].find(v) != child.current_facilities[st].end()
-                    || (int)child.current_facilities[st].size() == problem.K) {
-                has = true;
-            }
-        }
-        if (has) return false;
         child.dna[t].insert({v, l});
         for (int st = t; st < nd; st++) {
             child.current_facilities[st].insert(v);
@@ -209,12 +175,6 @@ struct Individuo {
                     }
                     i++;
                 }
-                // if (!ok_1) {
-                //     children_1.get_facility_LKM(t);
-                // }
-                // if (!ok_2) {
-                //     children_2.get_facility_LKM(t);
-                // }
             }
         }
         else {
@@ -518,7 +478,8 @@ struct Individuo {
             }
         }
 
-        total_penalty = multi_facilities * MULTI_FACILITY_PENALTY + more_than_k * PK_FACILITIES_PENALTY + no_facility * NO_FACILITY_PENALTY;
+        total_penalty = multi_facilities * MULTI_FACILITY_PENALTY + more_than_k * PK_FACILITIES_PENALTY * PK_FACILITIES_PENALTY
+                + no_facility * NO_FACILITY_PENALTY * NO_FACILITY_PENALTY * NO_FACILITY_PENALTY;
 
         return total_penalty;
     }
