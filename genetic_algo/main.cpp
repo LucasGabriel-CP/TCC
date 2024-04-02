@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     outfile.open("results.txt", std::ios_base::app);
     outfile << ind << " time: " << t << '\n';
     outfile.close();
-    std::cout << "Fitness: " << ind << '\n';
+    std::cout << ind << '\n';
     std::cout << std::fixed << std::setprecision(4) << t << '\n';
 
 

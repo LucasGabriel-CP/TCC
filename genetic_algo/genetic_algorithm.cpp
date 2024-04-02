@@ -225,20 +225,22 @@ struct Evolution {
     ) {
         population.assign(pop_size, Individuo(problem));
         int elitism_size = std::min(int(pop_size * elitism), 3);
-        double start = clock();
         debug("creatining population");
         populate();
 
         long long best = INF;
         int gen = 0;
-        double nd = (clock() - start) / CLOCKS_PER_SEC;
+        time_t start, nd;
+        time(&start);
+        time(&nd);
         std::vector<Individuo> next_gen(pop_size);
-        while ((double)(clock() - start) / CLOCKS_PER_SEC < time_limit) {
+        time_t at;
+        time(&at);
+        while ((double)(at - start) < time_limit) {
             debug(gen);
             std::sort(population.begin(), population.end());
-            best = std::min(best, population[0].fitness);
-            if (best < population[0].fitness) {
-                nd = (clock() - start) / CLOCKS_PER_SEC;
+            if (best > population[0].fitness) {
+                time(&nd);
                 best = population[0].fitness;
             }
 
@@ -302,6 +304,7 @@ struct Evolution {
             }
             debug("moved");
             gen++;
+            time(&at);
         }
 
         if (true) {
@@ -313,6 +316,6 @@ struct Evolution {
 
         assert(!population[0].give_penalties());
 
-        return {population[0], nd};
+        return {population[0], (double)(nd - start)};
     }
 };

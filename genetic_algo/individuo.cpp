@@ -19,6 +19,16 @@ struct Individuo {
     std::vector<std::pair<int, int>> index_best;
     LeasingProblem problem;
 
+    struct ExchangeCenterType {
+        int t, v, l, oth;
+        ExchangeCenterType(int _t, int _v, int _l, int _oth) {
+            t = _t;
+            v = _v;
+            l = _l;
+            oth = _oth;
+        }
+    };
+
     Individuo() {
         dna = std::vector<std::set<std::pair<int, int>>>(problem.T);
         clients_best = std::vector<long long>(problem.V, INF);
@@ -99,29 +109,90 @@ struct Individuo {
         get_facilities();
     }
 
+    // void mutate() {
+    //     // IMPROVE THIS LIKE THE SHAKE ON VNS
+    //     for (int t = 0; t < problem.T; t++) {
+    //         current_facilities[t].clear();
+    //         dna[t].clear();
+    //     }
+    //     for (int t = 0; t < problem.T; t++) {
+    //         // if ((int)current_facilities[t].size() == problem.K) continue;
+    //         if (rand() < problem.K / (problem.mean_l * problem.V)) {
+    //             for (int v = 0; v < problem.V; v++) {
+    //                 int l = rand_i() % problem.L;
+    //                 int nd = std::min(problem.T, t + problem.center_types[l]);
+    //                 // bool ok = true;
+    //                 for (int st = t; st < nd; st++) {
+    //                     current_facilities[st].insert(v);
+    //                     facilities_types[st].insert(l);
+    //                 }
+    //                 dna[t].insert({v, l});
+    //             }
+    //         }
+    //     }
+
+    //     get_fitness();
+    // }
+
     void mutate() {
-        // IMPROVE THIS LIKE THE SHAKE ON VNS
+        get_facilities();
+        std::set<std::pair<int, int>> available_n1;
         for (int t = 0; t < problem.T; t++) {
-            current_facilities[t].clear();
-            dna[t].clear();
+            for (int tt = t+1; tt < problem.T; tt++) {
+                if (check_facility(dna[t], tt, t) && check_facility(dna[tt], t, tt)) {
+                    available_n1.insert({t, tt});
+                }
+            }
         }
+        if (!available_n1.empty()) {
+            int id = rand_i() % (int)available_n1.size();
+            int p1, p2;
+            for (auto [t, tt]: available_n1) {
+                if (!id) {
+                    p1 = t; p2 = tt;
+                    break;
+                }
+                --id;
+            }
+            std::swap(dna[p1], dna[p2]);
+            get_fitness();
+        }
+
+        std::vector<ExchangeCenterType> available_n2;
         for (int t = 0; t < problem.T; t++) {
-            // if ((int)current_facilities[t].size() == problem.K) continue;
-            if (rand() < problem.K / (problem.mean_l * problem.V)) {
-                for (int v = 0; v < problem.V; v++) {
-                    int l = rand_i() % problem.L;
-                    int nd = std::min(problem.T, t + problem.center_types[l]);
-                    bool ok = true;
-                    for (int st = t; st < nd; st++) {
-                        current_facilities[st].insert(v);
-                        facilities_types[st].insert(l);
-                    }
-                    dna[t].insert({v, l});
+            for (auto [v, old_l]: dna[t]) {
+                for (int l = 0; l < problem.L; l++) {
+                    // if (check_type({v, old_l}, t, l)) {
+                        available_n2.push_back({t, v, old_l, l});
+                    // }
                 }
             }
         }
 
-        get_fitness();
+        if (!available_n2.empty()) {
+            int id = rand_i() % (int)available_n2.size();
+            dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
+            dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
+            get_fitness();
+        }
+
+        std::vector<ExchangeCenterType> available_n3;
+        for (int t = 0; t < problem.T; t++) {
+            for (auto [old_v, l]: dna[t]) {
+                for (int v = 0; v < problem.V; v++) {
+                    // if (check_location(t, v)) {
+                        available_n3.push_back({t, old_v, l, v});
+                    // }
+                }
+            }
+        }
+
+        if (!available_n3.empty()) {
+            int id = rand_i() % (int)available_n3.size();
+            dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
+            dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
+            get_fitness();
+        }
     }
 
     bool try_insert(std::set<std::pair<int, int>> gene, Individuo &child, int t) {
@@ -387,17 +458,10 @@ struct Individuo {
                 if (!op) {
                     int v = rand_i() % problem.V;
                     int l = rand_i() % problem.L;
-                    int nd = std::min(problem.T, t + problem.center_types[l]);
-                    bool ok = true;
-                    for (int st = t; ok && st < nd; st++) {
-                        if ((int)current_facilities[st].size() == problem.K) {
-                            ok = false;
-                        }
-                    }
-                    if (check_location(t, v) && ok) {
+                    // int nd = std::min(problem.T, t + problem.center_types[l]);
+                    // bool ok = true;
                         dna[t].insert({v, l});
                         get_facilities();
-                    }
                 }
                 else if (!dna[t].empty()) {
                     int rl, rv;
@@ -410,32 +474,17 @@ struct Individuo {
                         k--;
                     }
                     int nd = std::min(problem.T, t + problem.center_types[rl]);
-                    bool ok = true;
-                    for (int st = t; ok && st < nd; st++) {
-                        if ((int)current_facilities[st].size() == 1) {
-                            ok = false;
-                        }
-                    }
-                    if (ok) {
+                    // bool ok = true;
                         dna[t].erase({rv, rl});
-                    }
                     int v = rand_i() % problem.V;
                     int l = rand_i() % problem.L;
                     if (op == 2) {
                         nd = std::min(problem.T, t + problem.center_types[l]);
-                        ok = true;
-                        for (int st = t; ok && st < nd; st++) {
-                            if (current_facilities[st].find(v) != current_facilities[st].end()
-                                || (int)current_facilities[st].size() == problem.K) {
-                                ok = false;
-                            }
-                        }
-                        if (check_location(t, v) && ok) {
+                        // ok = true;
                             dna[t].insert({v, l});
                             for (int st = t; st < nd; st++) {
                                 current_facilities[st].insert(v);
                             }
-                        }
                     }
                     get_facilities();
                 }
