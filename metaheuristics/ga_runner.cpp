@@ -1,6 +1,6 @@
 #include <iostream>
 #include "genetic_algorithm.cpp"
-#include "leasing.cpp"
+#include "problems/leasing.cpp"
 
 // 1: path/, 2: instance_filename.txt
 int main(int argc, char *argv[]) {
@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     int pop_size = 100;
     int num_threads = 12;
     double time_limit = 60*15;
-    bool verbose = true;
+    bool verbose = false;
     Evolution ga(problem, pop_size, num_threads);
 
     auto [ind, t] = ga.run_evo(std::stoll(fitness_limit), elitism, time_limit, verbose);
