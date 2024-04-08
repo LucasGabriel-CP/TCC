@@ -28,9 +28,11 @@ struct TabuSearch {
         Neighbor best_solution = Neighbor(problem, S0.dna, S0.fitness);
         Neighbor S = best_solution;
         bool stop_criteria = true;
+        int cnt = 0;
+        int save_k = k;
         for (int iter = 0; stop_criteria; iter++) { // roda ateh atingir o limite
             // Remove da lista tabu quem ja deu o tempo
-            if ((int)tabu_list.size() == k) {
+            while ((int)tabu_list.size() > k) {
                 tabu_list.erase(tabu_timer.front().second);
                 tabu_timer.pop();
             }
@@ -39,7 +41,11 @@ struct TabuSearch {
             std::vector<Neighbor> neighborhood(r, S);
             for (Neighbor &ng: neighborhood) {
                 // ng.shake();
-                ng.best_improve_ls();
+                // do {
+                    ng.first_improve_ls();
+                // } while (tabu_list.find(ng.get_hashed_sol()) != tabu_list.end());
+                // tabu_list.insert(ng.get_hashed_sol());
+                // tabu_timer.push({iter, ng.get_hashed_sol()});
             }
 
             // Pega o melhor vizinho que nao esta na lista
@@ -48,6 +54,12 @@ struct TabuSearch {
             while (id < r && tabu_list.find(neighborhood[id].get_hashed_sol()) != tabu_list.end()) {
                 id++;
             }
+            if (id == r) {
+                int x = rand_i() % r;
+                if (neighborhood[x].fitness < S.fitness * 1.5) {
+                    id = x;
+                }
+            }
             if (id != r) {
                 tabu_list.insert(neighborhood[id].get_hashed_sol());
                 tabu_timer.push({iter, neighborhood[id].get_hashed_sol()});
@@ -55,7 +67,23 @@ struct TabuSearch {
                 if (neighborhood[id] < best_solution) {
                     time(&nd);
                     best_solution = neighborhood[id];
+                    cnt = 0;
+                    k = save_k;
                 }
+                else {
+                    cnt++;
+                }
+            }
+            if (cnt >= k) {
+                if (rand() < 0.5) {
+                    k = save_k;
+                    tabu_list.clear();
+                    tabu_timer = std::queue<std::pair<int, long long>>();
+                }
+                else {
+                    k *= 1.5;
+                }
+                cnt = 0;
             }
             time(&at);
             double gap = double(best_solution.fitness - fitness_limit) / best_solution.fitness * 100;
@@ -67,6 +95,7 @@ struct TabuSearch {
             stop_criteria = double(at - start) < time_limit && gap > 0.005;
         }
         if (verbose) std::cout << '\n';
+        if (best_solution.give_penalties()) best_solution.fix_solution();
         return {best_solution, double(nd - start)};
     }
 };

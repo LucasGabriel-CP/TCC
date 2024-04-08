@@ -55,13 +55,13 @@ struct VNS {
         Neighbor new_S = S;
         while(k < r && stop_criteria) {
             Neighbor SS = new_S;
-            SS.best_improve_ls();
+            SS.first_improve_ls();
             
             // Select change
             sequential_change(new_S, SS, k, nd);
 
             time(&at);
-            gap = double(SS.fitness - fitness_limit) / fitness_limit * 100;
+            gap = double(SS.fitness - fitness_limit) / SS.fitness * 100;
             stop_criteria = gap > 0.005;
         }
         if (new_S < S) {
@@ -70,7 +70,7 @@ struct VNS {
         return S;
     }
 
-    std::pair<Neighbor, double> run(double time_limit = 3600, int r = 3, bool verbose = false, long long fitness_limit = -1) {
+    std::pair<Neighbor, double> run(double time_limit = 3600, int r = 3, bool verbose = false, long long fitness_limit = -1, int lmax = 3) {
         time_t start, nd, at;
         time(&start);
         InitialSolution S0(problem);
@@ -93,7 +93,7 @@ struct VNS {
             while(k < r && stop_criteria) {
                 Neighbor SS = new_S;
                 SS.shake();
-                SS = vnd(SS, 25, fitness_limit);
+                SS = vnd(SS, lmax, fitness_limit);
                 
                 // Select change
                 sequential_change(new_S, SS, k, nd);
@@ -102,21 +102,20 @@ struct VNS {
                 gap = double(SS.fitness - fitness_limit) / fitness_limit * 100;
                 stop_criteria = bool(double(at - start) < time_limit) && gap > 0.005;
             }
-            debug(cnt);
             if (new_S < S) {
                 std::swap(new_S, S);
             }
-            gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
+            gap = double(S.fitness - fitness_limit) / S.fitness * 100;
             stop_criteria = bool(double(at - start) < time_limit) && gap > 0.005;
             gen++;
         }
 
-        if (S.give_penalties()) {
-            S.fix_solution();
-        }
+        // if (S.give_penalties()) {
+        //     S.fix_solution();
+        // }
 
         if (verbose) {
-            gap = double(S.fitness - fitness_limit) / fitness_limit * 100;
+            gap = double(S.fitness - fitness_limit) / S.fitness * 100;
             std::cout << std::string(100, ' ') << '\n';
             std::cout << "Generation " << gen << ", Fitness = " << S.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\n";
             std::cout.flush();
