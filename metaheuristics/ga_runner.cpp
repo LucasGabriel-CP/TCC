@@ -16,13 +16,13 @@ int main(int argc, char *argv[]) {
     int pop_size = 100;
     int num_threads = 12;
     double time_limit = 60*15;
-    bool verbose = false;
+    bool verbose = true;
     Evolution ga(problem, pop_size, num_threads);
 
     auto [ind, t] = ga.run_evo(std::stoll(fitness_limit), elitism, time_limit, verbose);
     std::ofstream outfile;
-    outfile.open("results.txt", std::ios_base::app);
-    outfile << ind << " time: " << t << '\n';
+    outfile.open("logs/ga.log", std::ios_base::app);
+    outfile << argv[2] << ' ' << ind << " time: " << t << '\n';
     outfile.close();
     std::cout << ind << '\n';
     std::cout << std::fixed << std::setprecision(4) << t << '\n';

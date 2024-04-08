@@ -23,9 +23,15 @@ const long long PENALTY = 2;
 #define MULTI_FACILITY_PENALTY 500000LL
 #define NO_FACILITY_PENALTY 5000LL
 #define PK_FACILITIES_PENALTY 5000LL
+#define ALL_PENALTIES (MULTI_FACILITY_PENALTY + PK_FACILITIES_PENALTY * PK_FACILITIES_PENALTY + NO_FACILITY_PENALTY * NO_FACILITY_PENALTY * NO_FACILITY_PENALTY)
 
 
 int f_cmp(double const &lhs, double const &rhs) {
     if (fabs(lhs - rhs) < EPS) return 0;
     return lhs < rhs ? -1 : 1;
+}
+
+double get_rand(double l, double r) {
+    std::uniform_real_distribution<double> distri(l, r);
+    return distri(g);
 }

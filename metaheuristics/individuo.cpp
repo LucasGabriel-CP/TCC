@@ -30,11 +30,7 @@ struct Individuo {
     };
 
     Individuo() {
-        dna = std::vector<std::set<std::pair<int, int>>>(problem.T);
-        clients_best = std::vector<long long>(problem.V, INF);
-        index_best = std::vector<std::pair<int, int>>(problem.T*problem.K);
-        current_facilities = std::vector<std::set<int>>(problem.T);
-        facilities_types = std::vector<std::set<int>>(problem.T);
+        
     }
 
     Individuo(LeasingProblem const &_problem) {
@@ -447,6 +443,59 @@ struct Individuo {
         return true;
     }
 
+    void first_improve_ls() {
+        std::vector<std::set<std::pair<int, int>>> save_dna = dna;
+        int op = rand_i() % 4;
+        if (!op) {
+            std::vector<ExchangeCenterType> available_n2;
+            for (int t = 0; t < problem.T; t++) {
+                for (auto [v, old_l]: dna[t]) {
+                    for (int l = 0; l < problem.L; l++) {
+                        available_n2.push_back({t, v, old_l, l});
+                    }
+                }
+            }
+
+            if (!available_n2.empty()) {
+                int id = rand_i() % (int)available_n2.size();
+                dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
+                dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
+            }
+        }
+        else if (op == 1) {
+            int t = rand_i() % problem.T, v = rand_i() % problem.V, l = rand_i() % problem.L;
+            dna[t].insert({v, l});
+        }
+        else if (op == 2) {
+            std::vector<ExchangeCenterType> available;
+            for (int t = 0; t < problem.T; t++) {
+                for (auto [v, l]: dna[t]) available.push_back({t, v, l, v});
+            }
+            if (!available.empty()) {
+                int id = rand_i() % (int)available.size();
+                dna[available[id].t].erase({available[id].v, available[id].l});
+            }
+        }
+        else {
+            std::vector<ExchangeCenterType> available_n3;
+            for (int t = 0; t < problem.T; t++) {
+                for (auto [old_v, l]: dna[t]) {
+                    for (int v = 0; v < problem.V; v++) {
+                        available_n3.push_back({t, old_v, l, v});
+                    }
+                }
+            }
+
+            if (!available_n3.empty()) {
+                int id = rand_i() % (int)available_n3.size();
+                dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
+                dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
+            }
+        }
+        // if (give_penalties()) fix_solution();
+        get_fitness();
+    }
+
     void local_searchv2() {
         bool improve = true;
         while (improve) {
@@ -497,6 +546,95 @@ struct Individuo {
             }
         }
         get_fitness();
+    }
+
+    void fix_solution() {
+        std::vector<std::set<std::pair<int, int>>> fixed_sol(problem.T);
+        std::vector<std::pair<int, int>> best_v(problem.V);
+        std::vector<std::vector<int>> solutions;
+        for (int t = 0; t < problem.T; t++) {
+            for (auto [v, l]: dna[t]) {
+                solutions.push_back({t, v, l});
+            }
+        }
+        for (int v = 0; v < (int)solutions.size(); v++) {
+            best_v[v] = {INF, v};
+        }
+        get_facilities();
+        for (int t = 0; t < problem.T; t++) {
+            for (int client: problem.clients[t]) {
+                // long long mn = INF;
+                // int bv = -1;
+                for (int i = 0; i < (int)solutions.size(); i++) {
+                    auto vet = solutions[i];
+                    int nd = std::min(problem.T, vet[0] + problem.center_types[vet[2]]);
+                    if (vet[0] > t || nd <= t) continue;
+                    if (best_v[vet[1]].first == INF) best_v[vet[1]].first = 0;
+                    best_v[vet[1]].first += problem.graph[client][vet[1]];
+                }
+            }
+        }
+
+        std::sort(best_v.begin(), best_v.end());
+        for (int t = 0; t < problem.T; t++) {
+            dna[t].clear();
+            current_facilities[t].clear();
+            facilities_types[t].clear();
+        }
+        for (auto [_, i]: best_v) {
+            auto vet = solutions[i];
+            bool ok = true;
+            for (int st = vet[0]; ok && st < std::min(problem.T, vet[0] + problem.center_types[vet[2]]); st++) {
+                if ((int)current_facilities[st].size () == problem.K || current_facilities[st].find(vet[1]) != current_facilities[st].end()) {
+                    ok = false;
+                }
+            }
+            if (ok) {
+                dna[vet[0]].insert({vet[1], vet[2]});
+                for (int st = vet[0]; st < std::min(problem.T, vet[0] + problem.center_types[vet[2]]); st++) {
+                    current_facilities[st].insert(vet[1]);
+                    facilities_types[st].insert(vet[2]);
+                }
+            }
+        }
+        bool need = false;
+        for (int t = 0; !need && t < problem.T; t++) {
+            if ((int)current_facilities[t].empty()) need = true;
+        }
+        while(need) {
+            int at = 0;
+            for (at = 0; at < problem.T && !current_facilities[at].empty(); at++);
+            int ct = -1, cv, cl;
+            for (int t = at + 1; ct == -1 && t < problem.T; t++) {
+                if (!dna[t].empty()) {
+                    ct = t;
+                    int op = rand_i() % (int)dna[t].size();
+                    for (auto [v, l]: dna[t]) {
+                        if (!op) {
+                            cv = v; cl = l;
+                            break;
+                        }
+                        op--;
+                    }
+                }
+            }
+
+            if (ct == -1) {
+                cv = rand_i() % problem.V;
+                cl = rand_i() % problem.L;
+                dna[at].insert({cv, cl});
+            }
+            else {
+                dna[at] = dna[ct];
+                dna[ct].erase({cv, cl});
+            }
+
+            need = false;
+            get_facilities();
+            for (int t = 0; !need && t < problem.T; t++) {
+                if ((int)current_facilities[t].empty()) need = true;
+            }
+        }
     }
 
     long long give_penalties() {
