@@ -108,125 +108,181 @@ struct Neighbor {
         return true;
     }
 
-    bool shake() {
+    bool shake(int r) {
         bool shaked = false;
 
-
         get_facilities();
-        std::set<std::pair<int, int>> available_n1;
-        for (int t = 0; t < problem.T; t++) {
-            for (int tt = t+1; tt < problem.T; tt++) {
-                if (check_facility(dna[t], tt, t) && check_facility(dna[tt], t, tt)) {
-                    available_n1.insert({t, tt});
-                }
-            }
-        }
-        if (!available_n1.empty()) {
-            int id = rand_i() % (int)available_n1.size();
-            int p1, p2;
-            for (auto [t, tt]: available_n1) {
-                if (!id) {
-                    p1 = t; p2 = tt;
-                    break;
-                }
-                --id;
-            }
-            std::swap(dna[p1], dna[p2]);
-            get_fitness();
-            shaked = true;
-        }
 
-        std::vector<ExchangeCenterType> available_n2;
-        for (int t = 0; t < problem.T; t++) {
-            for (auto [v, old_l]: dna[t]) {
-                for (int l = 0; l < problem.L; l++) {
-                    // if (check_type(t, old_l, l)) {
-                        available_n2.push_back({t, v, old_l, l});
-                    // }
-                }
-            }
-        }
-
-        if (!available_n2.empty()) {
-            int id = rand_i() % (int)available_n2.size();
-            dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
-            dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
-            get_fitness();
-            shaked = true;
-        }
-
-        std::vector<ExchangeCenterType> available_n3;
-        for (int t = 0; t < problem.T; t++) {
-            for (auto [old_v, l]: dna[t]) {
-                for (int v = 0; v < problem.V; v++) {
-                    if (check_location(t, v)) {
-                        available_n3.push_back({t, old_v, l, v});
-                    }
-                }
-            }
-        }
-
-        if (!available_n3.empty()) {
-            int id = rand_i() % (int)available_n3.size();
-            dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
-            dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
-            get_fitness();
-            shaked = true;
-        }
-        return shaked;
-    }
-
-    void first_improve_ls() {
-        std::vector<std::set<std::pair<int, int>>> save_dna = dna;
-        int op = 3;
-        if (!op) {
+        while (r--) {
             std::vector<ExchangeCenterType> available_n2;
             for (int t = 0; t < problem.T; t++) {
                 for (auto [v, old_l]: dna[t]) {
                     for (int l = 0; l < problem.L; l++) {
-                        if (l == old_l) continue;
-                        available_n2.push_back({t, v, old_l, l});
+                        if (l != old_l) {
+                            available_n2.push_back({t, v, old_l, l});
+                        }
                     }
                 }
             }
-
             if (!available_n2.empty()) {
                 int id = rand_i() % (int)available_n2.size();
                 dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
                 dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
+                get_fitness();
+                shaked = true;
             }
         }
-        else if (op == 1) {
-            int t = rand_i() % problem.T, v = rand_i() % problem.V, l = rand_i() % problem.L;
-            dna[t].insert({v, l});
+        if (give_penalties()) fix_solution();
+
+        return shaked;
+    }
+
+    void get_neighbor(int r = 3) {
+        int cnt = 0;
+        for (int t = 0; t < problem.T; t++) {
+            cnt += (int)dna[t].size();
         }
-        else if (op == 2) {
-            std::vector<ExchangeCenterType> available;
-            for (int t = 0; t < problem.T; t++) {
-                for (auto [v, l]: dna[t]) available.push_back({t, v, l, v});
-            }
-            if (!available.empty()) {
-                int id = rand_i() % (int)available.size();
-                dna[available[id].t].erase({available[id].v, available[id].l});
+        std::vector<std::pair<int, int>> best_v(cnt);
+        std::vector<ExchangeCenterType> solutions(cnt), new_solution;
+        for (int t = 0, i = 0; t < problem.T; t++) {
+            for (auto [v, l]: dna[t]) {
+                solutions[i++] = {t, v, l, -1};
             }
         }
-        else {
+        for (int i = 0; i < (int)solutions.size(); i++) {
+            best_v[i] = {0, i};
+        }
+        get_facilities();
+        for (int t = 0; t < problem.T; t++) {
+            for (int client: problem.clients[t]) {
+                long long mn = INF;
+                int id = -1;
+                for (int i = 0; i < (int)solutions.size(); i++) {
+                    auto sol = solutions[i];
+                    int nd = std::min(problem.T, sol.t + problem.center_types[sol.l]);
+                    if (sol.t > t || nd <= t) continue;
+                    if (problem.graph[client][sol.v] < mn) {
+                        mn = problem.graph[client][sol.v];
+                        id = i;
+                    }
+                }
+                if (id != -1) {
+                    best_v[id].first++;
+                }
+            }
+        }
+
+        // std::shuffle(best_v.begin(), best_v.end(), g);
+        std::sort(best_v.begin(), best_v.end(), [&](auto a, auto b){ return a.first > b.first; });
+        r = std::max(cnt - r, 1);
+        for (int i = 0; i < r; i++) {
+            new_solution.push_back(solutions[best_v[i].second]);
+        }
+        for (int t = 0; t < problem.T; t++) {
+            dna[t].clear();
+            current_facilities[t].clear();
+            facilities_types[t].clear();
+        }
+        for (auto [t, v, l, _]: new_solution) {
+            int nd = std::min(problem.T, t + problem.center_types[l]);
+            for (int st = t; st < nd; st++) {
+                current_facilities[t].insert(v);
+                facilities_types[t].insert(l);
+            }
+        }
+
+        bool filled = false;
+        while(!filled){
+            int t = 0, l = rand_i() % problem.L;
+            int tt=t;
+            filled = true;
+            while(tt < problem.T){
+                int st = tt;
+                int nd = std::min(problem.T-1, st + problem.center_types[l] - 1);
+                int sz = 0;
+                for(int i = st; i <= nd; i++){
+                    sz = std::max(sz, (int)current_facilities[i].size());
+                }
+                if(sz+1 <= problem.K){
+                    std::vector<int> options_facilities;
+                    for(int v = 0; v < problem.V; v++){
+                        bool has = false;
+                        for(int i = st; !has && i <= nd; i++){
+                            if(current_facilities[i].find(v) != current_facilities[i].end()){
+                                has=true;
+                            }
+                        }
+                        if(!has){
+                            options_facilities.push_back(v);
+                        }
+                    }
+                    if(!options_facilities.empty()) {
+                        int op = rand_i() % options_facilities.size();
+                        int v = options_facilities[op];
+                        for(int u = st; u <= nd; u++){
+                            current_facilities[u].insert(v);
+                        }
+                        new_solution.push_back({tt, v, l, -1});
+                        filled=false;
+                        break;
+                    }
+                }
+                tt++;
+            }
+        }
+        for (int t = 0; t < problem.T; t++) {
+            dna[t].clear();
+        }
+        for (auto sol: new_solution) {
+            dna[sol.t].insert({sol.v, sol.l});
+        }
+        get_fitness();
+    }
+
+    void first_improve_ls(int r=3) {
+        std::vector<std::set<std::pair<int, int>>> save_dna = dna;
+        long long save_fitness = fitness;
+        do {
+            save_dna = dna;
+            save_fitness = fitness;
             std::vector<ExchangeCenterType> available_n3;
             for (int t = 0; t < problem.T; t++) {
                 for (auto [old_v, l]: dna[t]) {
-                    for (int v = 0; v < problem.V; v++) {
-                        available_n3.push_back({t, old_v, l, v});
-                    }
+                    int v = rand_i() % problem.V;
+                    while (v == old_v) v = rand_i() % problem.V;
+                    available_n3.push_back({t, old_v, l, v});
                 }
             }
+            std::shuffle(available_n3.begin(), available_n3.end(), g);
 
-            if (!available_n3.empty()) {
-                int id = rand_i() % (int)available_n3.size();
+            long long mn_fitness = fitness;
+            std::vector<std::set<std::pair<int, int>>> best_dna = dna;
+            for (int id = 0; id < (int)available_n3.size(); id++) {
                 dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
                 dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
+                if (give_penalties()) fix_solution();
+                get_fitness();
+                if (fitness > mn_fitness) {
+                    dna = best_dna;
+                    fitness = mn_fitness;
+                }
+                else {
+                    // available_n3.clear();
+                    // for (int t = 0; t < problem.T; t++) {
+                    //     for (auto [old_v, l]: dna[t]) {
+                    //         for (int v = 0; v < problem.V; v++) {
+                    //             if (v != old_v) {
+                    //                 available_n3.push_back({t, old_v, l, v});
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    // std::shuffle(available_n3.begin(), available_n3.end(), g);
+                    best_dna = dna;
+                    mn_fitness = fitness;
+                }
             }
-        }
-        // if (give_penalties()) fix_solution();
+        } while(fitness >= save_fitness && r--);
         get_fitness();
     }
 
@@ -236,35 +292,43 @@ struct Neighbor {
             improve = false;
             std::vector<std::set<std::pair<int, int>>> save_dna = dna;
             long long save_fitness = fitness;
-            int op = rand_i() % 3;
-            if (!op) {
-                std::vector<ExchangeCenterType> available_n2;
-                for (int t = 0; t < problem.T; t++) {
-                    for (auto [v, old_l]: dna[t]) {
-                        for (int l = 0; l < problem.L; l++) {
-                            available_n2.push_back({t, v, old_l, l});
+            std::vector<ExchangeCenterType> available_n3;
+            for (int t = 0; t < problem.T; t++) {
+                for (auto [old_v, l]: dna[t]) {
+                    for (int v = 0; v < problem.V; v++) {
+                        if (v != old_v) {
+                            available_n3.push_back({t, old_v, l, v});
                         }
                     }
                 }
+            }
+            std::shuffle(available_n3.begin(), available_n3.end(), g);
 
-                if (!available_n2.empty()) {
-                    int id = rand_i() % (int)available_n2.size();
-                    dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
-                    dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
+            long long mn_fitness = fitness;
+            std::vector<std::set<std::pair<int, int>>> best_dna = dna;
+            for (int id = 0; id < (int)available_n3.size(); id++) {
+                dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
+                dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
+                if (give_penalties()) fix_solution();
+                get_fitness();
+                if (fitness > mn_fitness) {
+                    dna = best_dna;
+                    fitness = mn_fitness;
                 }
-            }
-            else if (op == 1) {
-                int t = rand_i() % problem.T, v = rand_i() % problem.V, l = rand_i() % problem.L;
-                dna[t].insert({v, l});
-            }
-            else if (op == 2) {
-                std::vector<ExchangeCenterType> available;
-                for (int t = 0; t < problem.T; t++) {
-                    for (auto [v, l]: dna[t]) available.push_back({t, v, l, v});
-                }
-                if (!available.empty()) {
-                    int id = rand_i() % (int)available.size();
-                    dna[available[id].t].erase({available[id].v, available[id].l});
+                else {
+                    // available_n3.clear();
+                    // for (int t = 0; t < problem.T; t++) {
+                    //     for (auto [old_v, l]: dna[t]) {
+                    //         for (int v = 0; v < problem.V; v++) {
+                    //             if (v != old_v) {
+                    //                 available_n3.push_back({t, old_v, l, v});
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    // std::shuffle(available_n3.begin(), available_n3.end(), g);
+                    best_dna = dna;
+                    mn_fitness = fitness;
                 }
             }
             if (get_fitness() < save_fitness) {
@@ -295,29 +359,31 @@ struct Neighbor {
     }
 
     void valid() {
-        for (int t = 0; t < problem.T; t++) {
-            if ((int)current_facilities[t].size() > problem.K) {
-                assert(false && "K constraint");
-            }
-            if (current_facilities[t].empty()) {
-                assert(false && "No facility");
-            }
-            for (auto [v, l]: dna[t]) {
-                int cnt = 0;
-                int nd = std::min(problem.T, t + problem.center_types[l]);
-                for (int st = t; st < nd; st++) {
-                    // Check for multifacilities
-                    for (auto [u, _]: dna[st]) {
-                        if (u == v) {
-                            cnt++;
+        #ifdef DPIZZA
+            for (int t = 0; t < problem.T; t++) {
+                if ((int)current_facilities[t].size() > problem.K) {
+                    assert(false && "K constraint");
+                }
+                if (current_facilities[t].empty()) {
+                    assert(false && "No facility");
+                }
+                for (auto [v, l]: dna[t]) {
+                    int cnt = 0;
+                    int nd = std::min(problem.T, t + problem.center_types[l]);
+                    for (int st = t; st < nd; st++) {
+                        // Check for multifacilities
+                        for (auto [u, _]: dna[st]) {
+                            if (u == v) {
+                                cnt++;
+                            }
                         }
                     }
-                }
-                if (cnt > 1) {
-                    assert(false && "Multi facilityies");
+                    if (cnt > 1) {
+                        assert(false && "Multi facilityies");
+                    }
                 }
             }
-        }
+        #endif
     }
 
     long long give_penalties() {
@@ -326,15 +392,17 @@ struct Neighbor {
         for (int t = 0; t < problem.T; t++) {
             for (auto [v, l]: dna[t]) {
                 int nd = std::min(problem.T, t + problem.center_types[l]);
+                int added = 0;
                 for (int st = t; st < nd; st++) {
                     // Check for multifacilities
                     for (auto [u, _]: dna[st]) {
                         if (u == v) {
-                            multi_facilities++;
+                            added++;
                         }
                     }
                 }
-                multi_facilities--;
+                if (added)
+                    multi_facilities += (added - 1);
             }
         }
 
@@ -397,22 +465,30 @@ struct Neighbor {
             }
         }
         for (int i = 0; i < (int)solutions.size(); i++) {
-            best_v[i] = {INF, i};
+            best_v[i] = {0, i};
         }
         get_facilities();
         for (int t = 0; t < problem.T; t++) {
             for (int client: problem.clients[t]) {
+                long long mn = INF;
+                int id = -1;
                 for (int i = 0; i < (int)solutions.size(); i++) {
                     auto sol = solutions[i];
                     int nd = std::min(problem.T, sol.t + problem.center_types[sol.l]);
                     if (sol.t > t || nd <= t) continue;
-                    if (best_v[i].first == INF) best_v[i].first = 0;
-                    best_v[i].first += problem.graph[client][sol.v];
+                    if (problem.graph[client][sol.v] < mn) {
+                        mn = problem.graph[client][sol.v];
+                        id = i;
+                    }
+                }
+                if (id != -1) {
+                    best_v[id].first++;
                 }
             }
         }
 
-        std::sort(best_v.begin(), best_v.end());
+        // std::shuffle(best_v.begin(), best_v.end(), g);
+        std::sort(best_v.begin(), best_v.end(), [&](auto a, auto b){ return a.first > b.first; });
         for (int t = 0; t < problem.T; t++) {
             dna[t].clear();
             current_facilities[t].clear();
@@ -436,42 +512,43 @@ struct Neighbor {
         }
         bool need = false;
         for (int t = 0; !need && t < problem.T; t++) {
-            if ((int)current_facilities[t].empty()) need = true;
+            if ((int)current_facilities[t].size() < problem.K) need = true;
+            assert((int)current_facilities[t].size() <= problem.K);
         }
-        while(need) {
-            int at = 0;
-            for (at = 0; at < problem.T && !current_facilities[at].empty(); at++);
-            int ct = -1, cv, cl;
-            for (int t = at + 1; ct == -1 && t < problem.T; t++) {
-                if (!dna[t].empty()) {
-                    ct = t;
-                    int op = rand_i() % (int)dna[t].size();
-                    for (auto [v, l]: dna[t]) {
-                        if (!op) {
-                            cv = v; cl = l;
-                            break;
-                        }
-                        op--;
+        int at = 0;
+        while(true) {
+            for (; at < problem.T && (int)current_facilities[at].size() == problem.K; at++);
+            if (at == problem.T) break;
+
+            std::set<std::pair<int, int>> available;
+            for (int v = 0; v < problem.V; v++) {
+                for (int l = 0; l < problem.L; l++) {
+                    int nd = std::min(problem.T, at + problem.center_types[l]), st;
+                    for (st = at; st < nd && (int)current_facilities[st].size() < problem.K && current_facilities[st].find(v) == current_facilities[at].end(); st++);
+                    if (st == nd) {
+                        available.insert({v, l});
                     }
                 }
             }
-
-            if (ct == -1) {
-                cv = rand_i() % problem.V;
-                cl = rand_i() % problem.L;
-                dna[at].insert({cv, cl});
+            if (available.empty()) {
+                at++;
             }
             else {
-                dna[at] = dna[ct];
-                dna[ct].erase({cv, cl});
-            }
+                int op = rand_i() % (int)available.size();
+                int cv, cl;
+                for (auto [v, l]: available) {
+                    if (!op) {
+                        cv = v; cl = l; break;
+                    }
+                    op--;
+                }
 
-            need = false;
-            get_facilities();
-            for (int t = 0; !need && t < problem.T; t++) {
-                if ((int)current_facilities[t].empty()) need = true;
+                dna[at].insert({cv, cl});
+
+                get_facilities();
             }
         }
+        valid();
     }
 
 
