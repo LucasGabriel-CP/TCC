@@ -12,14 +12,14 @@ def main(argv):
         model.add_data(instances[int(argv[2])])
         model.lesgo(time_limit=60*15, problem=argv[1].upper())
         with open('./results.txt', 'a') as fp:
-            fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}\n')
+            fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}, bound {model.model.ObjBound}\n')
     else:
         for inst in instances[1:]:
             model = Optmizer()
             model.add_data(inst)
             model.lesgo(time_limit=60*15, problem=argv[1].upper())
             with open('./results.txt', 'a') as fp:
-                fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}\n')
+                fp.write(f'Fitness: {model.Z}, gap: {model.gap}, time: {model.runtime}, bound {model.model.ObjBound}\n')
     
 
 if __name__ == "__main__":
