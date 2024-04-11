@@ -271,29 +271,28 @@ struct Individuo {
 
     bool valid() {        
         #ifdef PIZZA
+            get_facilities();
             for (int t = 0; t < problem.T; t++) {
-            if ((int)current_facilities[t].size() > problem.K) {
-                assert(false && "K constraint");
+                if ((int)current_facilities[t].size() > problem.K) {
+                    assert(false && "K constraint");
+                }
+                if (current_facilities[t].empty()) {
+                    assert(false && "No facility");
+                }
             }
-            if (current_facilities[t].empty()) {
-                assert(false && "No facility");
-            }
-            for (auto [v, l]: dna[t]) {
-                int cnt = 0;
-                int nd = std::min(problem.T, t + problem.center_types[l]);
-                for (int st = t; st < nd; st++) {
-                    // Check for multifacilities
-                    for (auto [u, _]: dna[st]) {
-                        if (u == v) {
-                            cnt++;
+            std::set<std::pair<int, int>> used;
+            for (int t = 0; t < problem.T; t++) {
+                for (auto [v, l]: dna[t]) {
+                    int nd = std::min(problem.T, t + problem.center_types[l]);
+                    for (int st = t; st < nd; st++) {
+                        // Check for multifacilities
+                        if (used.find({st, v}) != used.end()) {
+                            assert(false && "Multi facilityies");
                         }
+                        used.insert({st, v});
                     }
                 }
-                if (cnt > 1) {
-                    assert(false && "Multi facilityies");
-                }
             }
-        }
         #endif
 
         return true;
@@ -466,12 +465,12 @@ struct Individuo {
         return true;
     }
 
-    void first_improve_ls(int r=5) {
+    void first_improve_ls(int r=3) {
         std::vector<std::set<std::pair<int, int>>> save_dna = dna;
         long long save_fitness = fitness;
         int cnt = 0;
         for (int t = 0; t < problem.T; t++) {
-            cnt += dna[t].size();
+            cnt += (int)dna[t].size();
         }
         do {
             save_dna = dna;
@@ -490,7 +489,8 @@ struct Individuo {
 
             long long mn_fitness = fitness;
             std::vector<std::set<std::pair<int, int>>> best_dna = dna;
-            for (int id = 0; id < (int)available_n3.size(); id++) {
+            int nd = std::min(cnt, (int)available_n3.size());
+            for (int id = 0; id < nd; id++) {
                 dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
                 dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
                 if (give_penalties()) fix_solution();
@@ -500,17 +500,6 @@ struct Individuo {
                     fitness = mn_fitness;
                 }
                 else {
-                    // available_n3.clear();
-                    // for (int t = 0; t < problem.T; t++) {
-                    //     for (auto [old_v, l]: dna[t]) {
-                    //         for (int v = 0; v < problem.V; v++) {
-                    //             if (v != old_v) {
-                    //                 available_n3.push_back({t, old_v, l, v});
-                    //             }
-                    //         }
-                    //     }
-                    // }
-                    // std::shuffle(available_n3.begin(), available_n3.end(), g);
                     best_dna = dna;
                     mn_fitness = fitness;
                 }
@@ -637,19 +626,26 @@ struct Individuo {
         int at = 0;
         while(true) {
             for (; at < problem.T && (int)current_facilities[at].size() == problem.K; at++);
-            if (at == problem.T) break;
+            if (at >= problem.T) break;
 
             std::set<std::pair<int, int>> available;
             for (int v = 0; v < problem.V; v++) {
                 for (int l = 0; l < problem.L; l++) {
                     int nd = std::min(problem.T, at + problem.center_types[l]), st;
-                    for (st = at; st < nd && (int)current_facilities[st].size() < problem.K && current_facilities[st].find(v) == current_facilities[at].end(); st++);
+                    for (st = at; st < nd && (int)current_facilities[st].size() < problem.K && current_facilities[st].find(v) == current_facilities[st].end(); st++);
                     if (st == nd) {
                         available.insert({v, l});
                     }
                 }
             }
             if (available.empty()) {
+                if (current_facilities[at].empty()) {
+                    int st;
+                    for (st = at + 1; st < problem.T && dna[st].empty(); st++);
+                    assert(st < problem.T);
+                    std::swap(dna[at], dna[st]);
+                    get_facilities();
+                }
                 at++;
             }
             else {
@@ -673,20 +669,21 @@ struct Individuo {
     long long give_penalties() {
         long long total_penalty = 0, multi_facilities = 0, more_than_k = 0, no_facility = 0;
 
+        std::set<std::pair<int, int>> used;
+
         for (int t = 0; t < problem.T; t++) {
             for (auto [v, l]: dna[t]) {
                 int nd = std::min(problem.T, t + problem.center_types[l]);
                 int added = 0;
                 for (int st = t; st < nd; st++) {
                     // Check for multifacilities
-                    for (auto [u, _]: dna[st]) {
-                        if (u == v) {
-                            added++;
-                        }
+                    if (used.find({st, v}) != used.end()) {
+                        added++;
                     }
+                    used.insert({st, v});
                 }
                 if (added)
-                    multi_facilities += (added - 1);
+                    multi_facilities += added;
             }
         }
 

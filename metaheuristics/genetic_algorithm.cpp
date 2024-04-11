@@ -196,7 +196,9 @@ struct Evolution {
     */
     static void run_local_search_partially(int l, int r, std::vector<Individuo> &next_gen) {
         for (int i = l; i <= r; i++) {
-            next_gen[i].first_improve_ls();
+            if (rand() < 0.5) {
+                next_gen[i].first_improve_ls();
+            }
         }
     }
 
@@ -220,6 +222,120 @@ struct Evolution {
     */
     std::pair<Individuo, double> run_evo(
         int fitness_limit = -1, double elitism = 0.1, double time_limit = 3600, bool verbose = false
+    ) {
+        population.assign(pop_size, Individuo(problem));
+        int elitism_size = std::min(int(pop_size * elitism), 3);
+        debug("creatining population");
+        populate();
+
+        long long best = INF;
+        int gen = 0;
+        time_t start, nd;
+        time(&start);
+        time(&nd);
+        std::vector<Individuo> next_gen(pop_size, Individuo(problem));
+        time_t at;
+        time(&at);
+        int cnt = 0;
+        while ((double)(at - start) < time_limit) {
+            debug(gen);
+            std::sort(population.begin(), population.end());
+            if (best > population[0].fitness) {
+                time(&nd);
+                best = population[0].fitness;
+                cnt = 0;
+            }
+            else {
+                cnt++;
+            }
+            if (cnt == 3000) {
+                for (int i = 0; i < elitism_size; i++) {
+                    next_gen[i] = population[i];
+                }
+                populate();
+                for (int i = 0; i < elitism_size; i++) {
+                    population[i] = next_gen[i];
+                }
+                cnt = 0;
+            }
+
+            double gap = double(population[0].fitness - fitness_limit) / population[0].fitness * 100;
+            if (gap < 0.01) {
+                break;
+            }
+
+            assert((int)population.size() == pop_size);
+            long long worst = population.back().fitness;
+
+            fmax = INF;
+            favg = 0;
+            for (int i = 0; i < pop_size; i++) {
+                Individuo ind = population[i];
+                fmax = std::min(fmax, 1ll * ind.fitness);
+                favg += 1ll * ind.fitness;
+                // debug(ind);
+            }
+            favg /= pop_size;
+
+            if (verbose) {
+                std::cout << std::string(100, ' ') << '\r';
+                std::cout.flush();
+                std::cout << "Generation " << gen << ", Fitness: min=" << fmax << ", mean=" << favg
+                    << ", max=" << worst << ", Gap:" << std::fixed << std::setprecision(6) << gap  << "\r";
+                std::cout.flush();
+            }
+
+            std::vector<int> weigths(pop_size);
+            int cur_weight = pop_size + 5;
+            long long ant = best;
+            for (int i = 0; i < pop_size; i++) {
+                if (population[i].fitness > ant) {
+                    ant = population[i].fitness;
+                    cur_weight--;
+                }
+                weigths[i] = cur_weight;
+            }
+            d = std::discrete_distribution<int>(weigths.begin(), weigths.end());
+
+            for (int i = 0; i < pop_size; i++) {
+                next_gen[i] = population[i];
+            }
+            debug("starting local search");
+            run_local_search(0, next_gen);
+
+            debug("starting crossover");
+            run_crossover(elitism_size, next_gen);
+
+            
+            debug("starting mutation");
+            run_mutation(elitism_size, next_gen);
+
+
+            debug("sorting", next_gen.size());
+            std::sort(next_gen.begin(), next_gen.end());
+            debug("moving");
+            for (int i = elitism_size; i < pop_size; i++) {
+                population[i] = next_gen[i-elitism_size];
+            }
+            debug("moved");
+            gen++;
+            time(&at);
+        }
+
+        if (true) {
+            std::cout << std::string(90, ' ') << '\r';
+            std::cout.flush();
+            double gap = double(population[0].fitness - fitness_limit) / fitness_limit * 100;
+            std::cout << "Generation " << gen << ", Fitness =" << best << std::fixed << std::setprecision(6) << ", Gap: " << gap << "\n";
+        }
+
+        population[0].valid();
+
+        return {population[0], (double)(nd - start)};
+    }
+
+    std::pair<std::vector<Individuo>, double> run_hibrid(
+        int sol_count, int fitness_limit = -1, double elitism = 0.1, double time_limit = 3600, bool verbose = false
     ) {
         population.assign(pop_size, Individuo(problem));
         int elitism_size = std::min(int(pop_size * elitism), 3);
@@ -327,8 +443,11 @@ struct Evolution {
             std::cout << "Generation " << gen << ", Fitness =" << best << std::fixed << std::setprecision(6) << ", Gap: " << gap << "\n";
         }
 
-        assert(!population[0].give_penalties());
+        std::vector<Individuo> solutions(sol_count);
+        for (int i = 0; i < sol_count; i++) {
+            solutions[i] = population[i];
+        }
 
-        return {population[0], (double)(nd - start)};
+        return {solutions, (double)(nd - start)};
     }
 };
