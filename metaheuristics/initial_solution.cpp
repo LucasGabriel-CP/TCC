@@ -5,7 +5,7 @@
 #include "util/DebugTemplate.cpp"
 #include "util/segtree.cpp"
 #include "util/Constants.cpp"
-#include "leasing.cpp"
+#include "problems/leasing.cpp"
 
 
 struct InitialSolution {
@@ -29,43 +29,6 @@ struct InitialSolution {
         dp = std::vector<int>(problem.T, -1);
         vis = std::vector<std::vector<bool>>(problem.T, std::vector<bool>(problem.V, false));
         facility_seg = std::vector<SegTree>(problem.V, SegTree(problem.T));
-    }
-
-    void dorit(int t) {
-        int low = 0, high = problem.V-1;
-        std::vector<int> ans;
-        while (low < high) {
-            int mid = (low + high) / 2;
-            std::vector<int> S;
-            std::set<int> set_V;
-            for (int i = 0; i < problem.V; i++) set_V.insert(i);
-            while (!set_V.empty()) {
-                int x = *set_V.begin();
-                S.push_back(x);
-                for (int i = 0; i <= mid; i++) {
-                    int v = problem.adj[x][i].first;
-                    if (set_V.find(v) != set_V.end()) {
-                        set_V.erase(v);
-                        for (int j = 0; j <= mid; j++) {
-                            int z = problem.adj[v][j].first;
-                            if (set_V.find(z) != set_V.end()) {
-                                set_V.erase(z);
-                            }
-                        }
-                    }
-                }
-                if ((int)S.size() <= problem.K) {
-                    ans = S;
-                    high = mid;
-                }
-                else {
-                    low = mid + 1;
-                }
-            }
-        }
-        for (int i: ans) {
-            facility_seg[i].update(t, t, 1);
-        }
     }
 
     void gon(int t) {
@@ -117,15 +80,10 @@ struct InitialSolution {
     }
 
 
-    void build(bool use_dorit = false) {
+    void build() {
         for (int t = 0; t < problem.T; t++) {
             aproximation_server = std::vector<int>(problem.K, -1);
-            if (use_dorit) {
-                dorit(t);
-            }
-            else {
-                gon(t);
-            }
+            gon(t);
         }
         for (int k = 0; k < problem.K; k++) {
             for (int &t: dp) t = -1;
@@ -141,6 +99,26 @@ struct InitialSolution {
                 }
                 at = std::min(problem.T, at + problem.center_types[l]);
             }
+        }
+        get_fitness();
+    }
+
+    void random_build() {
+        for (int t = 0; t < problem.T; ) {
+            int k = rand_i() % problem.K;
+            int nxt = t;
+            std::set<int> used_nodes;
+            while(k--) {
+                int v = rand_i() % problem.V;
+                while (used_nodes.find(v) != used_nodes.end()) {
+                    v = rand_i() % problem.V;
+                }
+                int l = rand_i() % problem.L;
+                dna[t].insert({v, l});
+                used_nodes.insert(v);
+                nxt = std::max(nxt, t + problem.center_types[l]);
+            }
+            t = nxt;
         }
         get_fitness();
     }

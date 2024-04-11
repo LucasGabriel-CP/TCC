@@ -5,7 +5,6 @@
 #include <fstream>
 #include <vector>
 #include <map>
-#include "util/DebugTemplate.cpp"
 
 
 struct LeasingProblem {
