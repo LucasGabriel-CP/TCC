@@ -44,7 +44,7 @@ struct VNS {
         k++;
     }
 
-    Neighbor vnd(Neighbor &S0, int r = 3, long long fitness_limit = -1) {
+    Neighbor vnd(Neighbor &S0, int r = 3, long long fitness_limit = -1, double time_limit = 3600) {
         time_t start, nd, at;
         time(&start);
         Neighbor S(problem, S0.dna, S0.fitness);
@@ -55,14 +55,15 @@ struct VNS {
         Neighbor new_S = S;
         while(k < r && stop_criteria) {
             Neighbor SS = new_S;
-            SS.get_neighbor(k+1);
+            // SS.get_neighbor(k+1);
+            SS.first_improve_ls(k+1);
 
             // Select change
             sequential_change(new_S, SS, k, nd);
 
             time(&at);
             gap = double(SS.fitness - fitness_limit) / SS.fitness * 100;
-            stop_criteria = gap > 0.01;
+            stop_criteria = bool(double(at - start) < time_limit) && gap > 0.01;
         }
         if (new_S < S) {
             std::swap(new_S, S);
@@ -93,8 +94,8 @@ struct VNS {
             while(k < r && stop_criteria) {
                 Neighbor SS = new_S;
                 SS.shake(k+1);
-                // SS = vnd(SS, lmax, fitness_limit);
-                SS.first_improve_ls(k+1);
+                SS = vnd(SS, lmax, fitness_limit, time_limit - double(at - start));
+                // SS.first_improve_ls(k+1);
                 
                 // Select change
                 sequential_change(new_S, SS, k, nd);

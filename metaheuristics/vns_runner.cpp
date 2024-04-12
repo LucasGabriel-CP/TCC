@@ -14,7 +14,8 @@ struct params {
         runtime = _runtime; fitness = _fitness;
     }
     friend bool operator < (params const &lhs, params const &rhs){
-        return lhs.fitness < rhs.fitness;
+        if (lhs.fitness != rhs.fitness) return lhs.fitness < rhs.fitness;
+        return lhs.runtime < rhs.runtime;
     }
 
     friend std::ostream &operator <<(std::ostream &os, const params &sol) {
@@ -43,12 +44,12 @@ int main(int argc, char *argv[]) {
 
     // return 0;
 
-    int solution_number = 12;
+    int solution_number = 16;
     std::vector<std::thread> threads(solution_number);
     std::vector<params> all_fitness(solution_number);
     auto vns_runner = [&](int i, int r, int lmax) {
         VNS model(problem);
-        auto [S, runtime] = model.run(60*20, r, false, std::stoll(fitness_limit), lmax);
+        auto [S, runtime] = model.run(60*15, r, false, std::stoll(fitness_limit), lmax);
         mtx.lock();
             if (S.give_penalties() != 0) std::cout << "Invalid solution\n";
             all_fitness[i] = {runtime, S.fitness};
@@ -64,9 +65,12 @@ int main(int argc, char *argv[]) {
 
     params best = *std::min_element(all_fitness.begin(), all_fitness.end());
     std::cout << "Best fitness overall: " << best << '\n';
+    time_t curr_time = std::time(NULL);
+    std::string curr_date = std::ctime(&curr_time);
+    curr_date.pop_back();
     std::ofstream outfile;
     outfile.open("logs/vns.log", std::ios_base::app);
-    outfile << argv[2] << ' ' << best << '\n';
+    outfile << curr_date << ' ' << argv[2] << ' ' << best << '\n';
     outfile.close();
 
     return 0;
