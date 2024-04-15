@@ -39,13 +39,9 @@ struct TabuSearch {
 
             // Seleciona vizinhos
             std::vector<Neighbor> neighborhood(r, S);
-            for (Neighbor &ng: neighborhood) {
-                // ng.shake();
-                // do {
-                    ng.first_improve_ls();
-                // } while (tabu_list.find(ng.get_hashed_sol()) != tabu_list.end());
-                // tabu_list.insert(ng.get_hashed_sol());
-                // tabu_timer.push({iter, ng.get_hashed_sol()});
+            for (int i = 0; i < r; i++) {
+                Neighbor &ng = neighborhood[i];
+                ng.first_improve_ls();
             }
 
             // Pega o melhor vizinho que nao esta na lista
@@ -88,7 +84,7 @@ struct TabuSearch {
             time(&at);
             double gap = double(best_solution.fitness - fitness_limit) / best_solution.fitness * 100;
             if (verbose) {
-                std::cout << "\33[2k" << "Generation " << iter << ", Tabu list size: " << (int)tabu_list.size() << ", Cur Fitness: " << S.fitness
+                std::cout << "\33[2k" << "Generation " << iter + 1 << ", Tabu list size: " << (int)tabu_list.size() << ", Cur Fitness: " << S.fitness
                     << ", Fitness = " << best_solution.fitness << ", Gap:" << std::fixed << std::setprecision(4) << gap << "\r";
                 std::cout.flush();
             }

@@ -152,7 +152,6 @@ struct Individuo {
                 --id;
             }
             std::swap(dna[p1], dna[p2]);
-            get_fitness();
         }
 
         std::vector<ExchangeCenterType> available_n2;
@@ -170,7 +169,6 @@ struct Individuo {
             int id = rand_i() % (int)available_n2.size();
             dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
             dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
-            get_fitness();
         }
 
         std::vector<ExchangeCenterType> available_n3;
@@ -188,8 +186,8 @@ struct Individuo {
             int id = rand_i() % (int)available_n3.size();
             dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
             dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
-            get_fitness();
         }
+        get_fitness();
     }
 
     bool try_insert(std::set<std::pair<int, int>> gene, Individuo &child, int t) {
@@ -475,6 +473,7 @@ struct Individuo {
         do {
             save_dna = dna;
             std::vector<ExchangeCenterType> available_n3;
+            available_n3.reserve(problem.V * cnt);
             save_fitness = fitness;
             for (int t = 0; t < problem.T; t++) {
                 for (auto [old_v, l]: dna[t]) {

@@ -235,6 +235,7 @@ struct Neighbor {
         for (auto sol: new_solution) {
             dna[sol.t].insert({sol.v, sol.l});
         }
+        if (give_penalties()) fix_solution();
         get_fitness();
     }
 

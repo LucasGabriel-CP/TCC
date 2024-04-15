@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     std::vector<params> all_fitness(solution_number);
     auto vns_runner = [&](int i, int r, int lmax) {
         VNS model(problem);
-        auto [S, runtime] = model.run(60*15, r, false, std::stoll(fitness_limit), lmax);
+        auto [S, runtime] = model.run(60*15, r, false, std::stoll(fitness_limit), lmax, true, 48);
         mtx.lock();
             if (S.give_penalties() != 0) std::cout << "Invalid solution\n";
             all_fitness[i] = {runtime, S.fitness};
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     std::string curr_date = std::ctime(&curr_time);
     curr_date.pop_back();
     std::ofstream outfile;
-    outfile.open("logs/vns.log", std::ios_base::app);
+    outfile.open("logs/vtns.log", std::ios_base::app);
     outfile << curr_date << ' ' << argv[2] << ' ' << best << '\n';
     outfile.close();
 

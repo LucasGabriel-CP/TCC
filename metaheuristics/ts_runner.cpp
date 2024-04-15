@@ -7,19 +7,19 @@
 #include "problems/leasing.cpp"
 
 struct params {
-    int r, k;
+    double runtime;
     long long fitness;
-    params() { };
-    params(int _r, int _k, long long _fitness) {
-        r = _r; _k = k;
-        fitness = _fitness;
+    params() { }
+    params(double _runtime, long long _fitness) {
+        runtime = _runtime; fitness = _fitness;
     }
     friend bool operator < (params const &lhs, params const &rhs){
-        return lhs.fitness < rhs.fitness;
+        if (lhs.fitness != rhs.fitness) return lhs.fitness < rhs.fitness;
+        return lhs.runtime < rhs.runtime;
     }
 
     friend std::ostream &operator <<(std::ostream &os, const params &sol) {
-        os << "Fitness: " << sol.fitness << ", r: " << sol.r << ", k: " << sol.k;
+        os << "Fitness: " << sol.fitness << ", runtime: " << sol.runtime;
         return os;
     }
 };
@@ -42,42 +42,33 @@ int main(int argc, char *argv[]) {
     // outfile.close();
     // std::cout << S << '\n' << runtime << '\n';
 
-    params best_solution(INF, -1, -1);
-    int sr = 1, sk = 1;
-    while (sr <= 50) {
-        int solution_number = 16;
-        std::vector<std::thread> threads(solution_number);
-        std::vector<params> all_fitness(solution_number);
-        auto vns_runner = [&](int i, int r, int k) {
-            TabuSearch model(problem);
-            auto [S, runtime] = model.run(60*30, r, k, false, std::stoll(fitness_limit));
-            mtx.lock();
-                if (S.give_penalties() != 0) std::cout << "Invalid solution\n";
-                std::cout << S << '\n' << runtime << '\n';
-                all_fitness[i] = {r, k, S.fitness};
-            mtx.unlock();
-        };
-        for (int i = 0; i < solution_number; i++) {
-            threads[i] = std::thread(vns_runner, i, sr, sk);
-            sk = (sk + 1) % 100;
-            if (!sk) {
-                sk++;
-                sr++;
-            }
-        }
-
-        for (std::thread &th: threads) th.join();
-
-        for (auto f: all_fitness) {
-            if (f < best_solution) {
-                best_solution = f;
-            }
-        }
+    int sr = 15, sk = 48;
+    int solution_number = 16;
+    std::vector<std::thread> threads(solution_number);
+    std::vector<params> all_fitness(solution_number);
+    auto vns_runner = [&](int i, int r, int k) {
+        TabuSearch model(problem);
+        auto [S, runtime] = model.run(60*15, r, k, false, std::stoll(fitness_limit));
+        mtx.lock();
+            if (S.give_penalties() != 0) std::cout << "Invalid solution\n";
+            all_fitness[i] = {runtime, S.fitness};
+            std::cout << all_fitness[i] << '\n' << runtime << '\n';
+        mtx.unlock();
+    };
+    for (int i = 0; i < solution_number; i++) {
+        threads[i] = std::thread(vns_runner, i, sr, sk);
     }
+
+    for (std::thread &th: threads) th.join();
+
+    params best_solution = *std::min_element(all_fitness.begin(), all_fitness.end());
+    time_t curr_time = std::time(NULL);
+    std::string curr_date = std::ctime(&curr_time);
+    curr_date.pop_back();
     std::cout << "Best fitness overall: " << best_solution << '\n';
     std::ofstream outfile;
     outfile.open("logs/ts.log", std::ios_base::app);
-    outfile << argv[2] << ' ' << best_solution << '\n';
+    outfile << curr_date << ' ' << argv[2] << ' ' << best_solution << '\n';
     outfile.close();
 
     return 0;
