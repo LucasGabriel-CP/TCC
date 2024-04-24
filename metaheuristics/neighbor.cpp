@@ -126,7 +126,7 @@ struct Neighbor {
             }
             if (!available_n2.empty()) {
                 int id = rand_i() % (int)available_n2.size();
-                dna[available_n2[id].t].erase({available_n2[id].v, available_n2[id].l});
+                dna[available_n2[id].t].erase(dna[available_n2[id].t].find({available_n2[id].v, available_n2[id].l}));
                 dna[available_n2[id].t].insert({available_n2[id].v, available_n2[id].oth});
                 get_fitness();
                 shaked = true;
@@ -136,107 +136,43 @@ struct Neighbor {
         return shaked;
     }
 
-    void get_neighbor(int r = 3) {
-        int cnt = 0;
+    void get_neighbor() {
         for (int t = 0; t < problem.T; t++) {
-            cnt += (int)dna[t].size();
-        }
-        std::vector<std::pair<int, int>> best_v(cnt);
-        std::vector<ExchangeCenterType> solutions(cnt), new_solution;
-        for (int t = 0, i = 0; t < problem.T; t++) {
-            for (auto [v, l]: dna[t]) {
-                solutions[i++] = {t, v, l, -1};
+            int op = rand_i() % 3;
+            if (!op) {
+                int v = rand_i() % problem.V;
+                int l = rand_i() % problem.L;
+                // int nd = std::min(problem.T, t + problem.center_types[l]);
+                // bool ok = true;
+                    dna[t].insert({v, l});
+                    get_facilities();
             }
-        }
-        for (int i = 0; i < (int)solutions.size(); i++) {
-            best_v[i] = {0, i};
-        }
-        get_facilities();
-        for (int t = 0; t < problem.T; t++) {
-            for (int client: problem.clients[t]) {
-                long long mn = INF;
-                int id = -1;
-                for (int i = 0; i < (int)solutions.size(); i++) {
-                    auto sol = solutions[i];
-                    int nd = std::min(problem.T, sol.t + problem.center_types[sol.l]);
-                    if (sol.t > t || nd <= t) continue;
-                    if (problem.graph[client][sol.v] < mn) {
-                        mn = problem.graph[client][sol.v];
-                        id = i;
-                    }
-                }
-                if (id != -1) {
-                    best_v[id].first++;
-                }
-            }
-        }
-
-        // std::shuffle(best_v.begin(), best_v.end(), g);
-        std::sort(best_v.begin(), best_v.end(), [&](auto a, auto b){ return a.first > b.first; });
-        r = std::max(cnt - r, 1);
-        for (int i = 0; i < r; i++) {
-            new_solution.push_back(solutions[best_v[i].second]);
-        }
-        for (int t = 0; t < problem.T; t++) {
-            dna[t].clear();
-            current_facilities[t].clear();
-            facilities_types[t].clear();
-        }
-        for (auto [t, v, l, _]: new_solution) {
-            int nd = std::min(problem.T, t + problem.center_types[l]);
-            for (int st = t; st < nd; st++) {
-                current_facilities[t].insert(v);
-                facilities_types[t].insert(l);
-            }
-        }
-
-        bool filled = false;
-        while(!filled){
-            int t = 0, l = rand_i() % problem.L;
-            int tt=t;
-            filled = true;
-            while(tt < problem.T){
-                int st = tt;
-                int nd = std::min(problem.T-1, st + problem.center_types[l] - 1);
-                int sz = 0;
-                for(int i = st; i <= nd; i++){
-                    sz = std::max(sz, (int)current_facilities[i].size());
-                }
-                if(sz+1 <= problem.K){
-                    std::vector<int> options_facilities;
-                    for(int v = 0; v < problem.V; v++){
-                        bool has = false;
-                        for(int i = st; !has && i <= nd; i++){
-                            if(current_facilities[i].find(v) != current_facilities[i].end()){
-                                has=true;
-                            }
-                        }
-                        if(!has){
-                            options_facilities.push_back(v);
-                        }
-                    }
-                    if(!options_facilities.empty()) {
-                        int op = rand_i() % options_facilities.size();
-                        int v = options_facilities[op];
-                        for(int u = st; u <= nd; u++){
-                            current_facilities[u].insert(v);
-                        }
-                        new_solution.push_back({tt, v, l, -1});
-                        filled=false;
+            else if (!dna[t].empty()) {
+                int rl, rv;
+                int k = rand_i() % (int)dna[t].size();
+                for (auto [i, j]: dna[t]) {
+                    if (!k) {
+                        rv = i; rl = j;
                         break;
                     }
+                    k--;
                 }
-                tt++;
+                int nd = std::min(problem.T, t + problem.center_types[rl]);
+                // bool ok = true;
+                    dna[t].erase({rv, rl});
+                int v = rand_i() % problem.V;
+                int l = rand_i() % problem.L;
+                if (op == 2) {
+                    nd = std::min(problem.T, t + problem.center_types[l]);
+                    // ok = true;
+                        dna[t].insert({v, l});
+                        for (int st = t; st < nd; st++) {
+                            current_facilities[st].insert(v);
+                        }
+                }
+                get_facilities();
             }
         }
-        for (int t = 0; t < problem.T; t++) {
-            dna[t].clear();
-        }
-        for (auto sol: new_solution) {
-            dna[sol.t].insert({sol.v, sol.l});
-        }
-        if (give_penalties()) fix_solution();
-        get_fitness();
     }
 
     void first_improve_ls(int r=3) {
@@ -265,9 +201,18 @@ struct Neighbor {
             std::vector<std::set<std::pair<int, int>>> best_dna = dna;
             int nd = std::min(cnt, (int)available_n3.size());
             for (int id = 0; id < nd; id++) {
-                dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
+                if (problem.mean_l == -1) {
+                    auto it = dna[available_n3[id].t].lower_bound({available_n3[id].oth, -1});
+                    if (it != dna[available_n3[id].t].end() && it->first == available_n3[id].oth) {
+                        continue;
+                    }
+                }
+                auto check = dna[available_n3[id].t].find({available_n3[id].v, available_n3[id].l});
+                if (check == dna[available_n3[id].t].end()) continue;
+                dna[available_n3[id].t].erase(check);
                 dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
                 if (give_penalties()) fix_solution();
+                valid();
                 get_fitness();
                 if (fitness > mn_fitness) {
                     dna = best_dna;
@@ -354,9 +299,10 @@ struct Neighbor {
     }
 
     void valid() {
-        #ifdef DPIZZA
+        #ifdef PIZZA
             for (int t = 0; t < problem.T; t++) {
                 if ((int)current_facilities[t].size() > problem.K) {
+                    debug((int)current_facilities[t].size(), problem.K);
                     assert(false && "K constraint");
                 }
                 if (current_facilities[t].empty()) {
@@ -382,6 +328,7 @@ struct Neighbor {
     }
 
     long long give_penalties() {
+        if (problem.mean_l == -1) return 0ll;
         long long total_penalty = 0, multi_facilities = 0, more_than_k = 0, no_facility = 0;
 
         std::set<std::pair<int, int>> used;

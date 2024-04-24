@@ -65,7 +65,6 @@ struct VNS {
             time(&at);
             gap = double(SS.fitness - fitness_limit) / SS.fitness * 100;
             stop_criteria = bool(double(at - start) < time_limit) && gap > 0.01;
-
         }
         if (new_S < S) {
             std::swap(new_S, S);
@@ -86,7 +85,7 @@ struct VNS {
 
         time(&start);
         InitialSolution S0(problem);
-        S0.build();
+        S0.random_build();
         Neighbor S(problem, S0.dna, S0.fitness);
         time(&nd);
         time(&at);
@@ -126,10 +125,12 @@ struct VNS {
                             id = x;
                         }
                     }
-                    SS = neighborhood[id];
-                    long long hash_val = SS.get_hashed_sol();
-                    tabu_list.insert(hash_val);
-                    tabu_timer.push(hash_val);
+                    if (id != (k + 1)) {
+                        SS = neighborhood[id];
+                        long long hash_val = SS.get_hashed_sol();
+                        tabu_list.insert(hash_val);
+                        tabu_timer.push(hash_val);
+                    }
                 }
                 else {
                     SS.shake(k+1);
@@ -142,6 +143,10 @@ struct VNS {
 
                 if (k) {
                     cnt++;
+                }
+                else {
+                    cnt = 0;
+                    tabu_k = save_k;
                 }
 
                 time(&at);
@@ -252,8 +257,9 @@ struct VNS {
             while(k < r && stop_criteria) {
                 Neighbor SS = new_S;
                 SS.shake(k+1);
-                // SS = vnd(SS, lmax, fitness_limit);
-                SS.first_improve_ls(k+1);
+                SS = vnd(SS, 48, fitness_limit, time_limit - double(at - start));
+                // SS = vnd(SS, 10, fitness_limit, time_limit - double(at - start));
+                // SS.first_improve_ls();
                 
                 // Select change
                 sequential_change(new_S, SS, k, nd);

@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
     std::string fitness_limit = argv[4];
     double elitism = .1;
-    int pop_size = 48;
+    int pop_size = 32;
     int num_threads = 16;
     double time_limit = 60*15;
     bool verbose = true;

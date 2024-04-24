@@ -43,7 +43,7 @@ struct Evolution {
     */
     InitialSolution generate_individuo() {
         InitialSolution new_ind = InitialSolution(problem);
-        new_ind.build();
+        new_ind.random_build();
         return new_ind;
     }
 
@@ -250,7 +250,7 @@ struct Evolution {
             else {
                 cnt++;
             }
-            if (cnt == 3000) {
+            if (cnt == 500) {
                 for (int i = 0; i < elitism_size; i++) {
                     next_gen[i] = population[i];
                 }
@@ -338,7 +338,7 @@ struct Evolution {
 
     static void run_vns(
         std::vector<Individuo> const &population, LeasingProblem const &problem, std::vector<Neighbor> &vns_solutions,
-        int time_limit, long long fitness_limit, int num_threads, int pop_size
+        double time_limit, long long fitness_limit, int num_threads, int pop_size
     ) {
         for (int i = 0; i < pop_size; i++) {
             vns_solutions[i].dna = population[i].dna;
@@ -347,7 +347,7 @@ struct Evolution {
 
         auto runner = [&](int _l, int _r) {
             VNS model(problem);
-            model.run_multisol(vns_solutions, _l, _r, time_limit, fitness_limit);
+            model.run_multisol(vns_solutions, _l, _r, time_limit, 15, fitness_limit);
         };
         int l = 0, divs = pop_size / num_threads;
         std::vector<std::thread> threads(num_threads);
@@ -454,8 +454,8 @@ struct Evolution {
             vns_thread = std::thread(run_vns, std::cref(population), std::cref(problem), std::ref(vns_solutions),
                                 second_tl, fitness_limit, num_threads, pop_size);
             ga_thread = std::thread(run_ga, elitism_size);
-            vns_thread.join();
             ga_thread.join();
+            vns_thread.join();
 
             merge_solutions(vns_solutions);
 

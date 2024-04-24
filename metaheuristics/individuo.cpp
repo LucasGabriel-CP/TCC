@@ -490,9 +490,18 @@ struct Individuo {
             std::vector<std::set<std::pair<int, int>>> best_dna = dna;
             int nd = std::min(cnt, (int)available_n3.size());
             for (int id = 0; id < nd; id++) {
-                dna[available_n3[id].t].erase({available_n3[id].v, available_n3[id].l});
+                if (problem.mean_l == -1) {
+                    auto it = dna[available_n3[id].t].lower_bound({available_n3[id].oth, -1});
+                    if (it != dna[available_n3[id].t].end() && it->first == available_n3[id].oth) {
+                        continue;
+                    }
+                }
+                auto check = dna[available_n3[id].t].find({available_n3[id].v, available_n3[id].l});
+                if (check == dna[available_n3[id].t].end()) continue;
+                dna[available_n3[id].t].erase(check);
                 dna[available_n3[id].t].insert({available_n3[id].oth, available_n3[id].l});
                 if (give_penalties()) fix_solution();
+                valid();
                 get_fitness();
                 if (fitness > mn_fitness) {
                     dna = best_dna;

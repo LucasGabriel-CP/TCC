@@ -105,7 +105,7 @@ struct InitialSolution {
 
     void random_build() {
         for (int t = 0; t < problem.T; ) {
-            int k = rand_i() % problem.K;
+            int k = std::min(problem.K, (int)problem.clients[t].size());
             int nxt = t;
             std::set<int> used_nodes;
             while(k--) {

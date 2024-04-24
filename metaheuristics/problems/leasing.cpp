@@ -30,6 +30,7 @@ struct LeasingProblem {
         in.open(instance_path);
 
         in >> V >> T >> L >> K;
+        std::cout << V << ' ' << T << ' ' << L << ' ' << K << '\n';
 
         graph.assign(V, std::vector<long long>(V));
         adj.resize(V);
@@ -45,11 +46,21 @@ struct LeasingProblem {
 
         center_types.resize(L);
         mean_l = 0;
+        bool has = false;
         for (int i = 0; i < L; i++) {
             in >> center_types[i];
+            if (center_types[i] == 1) {
+                has = true;
+            }
             mean_l += i;
         }
-        mean_l /= L;
+        if (has) {
+            center_types = std::vector<int>(L, 1);
+            mean_l = -1;
+        }
+        else {
+            mean_l /= L;
+        }
 
         clients.resize(T);
         for (int t = 0; t < T; t++) {
